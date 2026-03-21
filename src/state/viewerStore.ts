@@ -1,0 +1,551 @@
+import { create } from 'zustand';
+import {
+  createDefaultAnimationTimeline,
+  deserializeAnimationTimeline,
+  normalizeAnimationTimeline,
+  serializeAnimationTimeline,
+} from '../lib/animation';
+import { STORAGE_KEYS, DEFAULT_VIEW } from '../lib/constants';
+import { cloneView } from '../lib/math';
+import { cloneHeadwayView } from '../lib/modeBridge';
+
+export type GlobeViewState = {
+  rotation: [number, number, number, number];
+  distance: number;
+  fov: number;
+};
+
+export type ViewerMode = 'geo' | 'headway';
+
+export type HeadwayViewState = {
+  center: [lng: number, lat: number];
+  zoom: number;
+  bearing: number;
+  pitch: number;
+};
+
+export type ViewerPreset = {
+  id: string;
+  label: string;
+  description: string;
+  state: GlobeViewState;
+};
+
+export type HudTelemetry = {
+  lat: number;
+  lon: number;
+  altitudeKm: number;
+  rollDeg: number;
+  sunlit: boolean;
+};
+
+export type QualityMode = 'performance' | 'balanced' | 'high';
+export type AxisLockMode = 'free' | 'axis-lock';
+export type RotationAxis = 'x' | 'y' | null;
+export type CompareModeState = 'off' | 'armed' | 'pinned';
+export type SelectedCountry = {
+  id: string;
+  name: string;
+  centroid: [lng: number, lat: number];
+};
+export type GeoOverviewAnchor = {
+  lat: number;
+  lon: number;
+};
+export type AnimationCommandKey =
+  | 'ud+'
+  | 'ud-'
+  | 'lr+'
+  | 'lr-'
+  | 'fb+'
+  | 'fb-'
+  | 'yaw+'
+  | 'yaw-'
+  | 'pitch+'
+  | 'pitch-'
+  | 'roll+'
+  | 'roll-';
+export type AnimationBlock = {
+  id: string;
+  command: AnimationCommandKey;
+  startMs: number;
+  endMs: number;
+  amount: number;
+  acceleration: number;
+  enabled: boolean;
+};
+export type AnimationTimeline = {
+  version: 2;
+  mode: ViewerMode;
+  totalDurationMs: number;
+  startGeoView: GlobeViewState | null;
+  startHeadwayView: HeadwayViewState | null;
+  blocks: AnimationBlock[];
+};
+export type AnimationSessionState = {
+  workspaceOpen: boolean;
+  phase: 'idle' | 'playing';
+  startedAtMs: number | null;
+  playheadMs: number;
+  previewGeoView: GlobeViewState | null;
+  previewHeadwayView: HeadwayViewState | null;
+};
+export type SixDofAxis =
+  | 'left-right'
+  | 'up-down'
+  | 'forward-back'
+  | 'yaw'
+  | 'pitch'
+  | 'roll';
+export type RendererTier = 'standard' | 'compatibility' | 'minimal';
+export type RendererFailureReason =
+  | 'canvas-fallback'
+  | 'renderer-init-failed'
+  | 'context-lost'
+  | null;
+export type LoadState =
+  | 'booting'
+  | 'ready'
+  | 'resolving-detail'
+  | 'degraded'
+  | 'error';
+export type RenderState =
+  | 'initializing'
+  | 'ready'
+  | 'context-lost'
+  | 'recovering'
+  | 'failed';
+export type HeadwayRenderState = 'idle' | 'loading' | 'ready' | 'error';
+
+const EMPTY_TELEMETRY: HudTelemetry = {
+  lat: 0,
+  lon: 0,
+  altitudeKm: 0,
+  rollDeg: 0,
+  sunlit: true,
+};
+
+const DEFAULT_HEADWAY_VIEW: HeadwayViewState = {
+  center: [-28, 19.5],
+  zoom: 1.8,
+  bearing: 0,
+  pitch: 0,
+};
+
+const DEFAULT_ANIMATION_SESSION: AnimationSessionState = {
+  workspaceOpen: false,
+  phase: 'idle',
+  startedAtMs: null,
+  playheadMs: 0,
+  previewGeoView: null,
+  previewHeadwayView: null,
+};
+
+const cloneAnimationTimeline = (
+  timeline: AnimationTimeline,
+): AnimationTimeline => ({
+  version: timeline.version,
+  mode: timeline.mode,
+  totalDurationMs: timeline.totalDurationMs,
+  startGeoView: timeline.startGeoView ? cloneView(timeline.startGeoView) : null,
+  startHeadwayView: timeline.startHeadwayView
+    ? cloneHeadwayView(timeline.startHeadwayView)
+    : null,
+  blocks: timeline.blocks.map((block) => ({ ...block })),
+});
+
+const getAnimationStorageKey = (mode: ViewerMode) =>
+  mode === 'geo'
+    ? STORAGE_KEYS.animationDraftGeo
+    : STORAGE_KEYS.animationDraftHeadway;
+
+const persistAnimationDraft = (timeline: AnimationTimeline) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(
+    getAnimationStorageKey(timeline.mode),
+    serializeAnimationTimeline(timeline),
+  );
+};
+
+export const readStoredAnimationDraft = (mode: ViewerMode) => {
+  if (typeof window === 'undefined') {
+    return createDefaultAnimationTimeline(mode);
+  }
+
+  const stored = window.localStorage.getItem(getAnimationStorageKey(mode));
+  const timeline = stored ? deserializeAnimationTimeline(stored) : null;
+
+  return timeline?.mode === mode
+    ? timeline
+    : createDefaultAnimationTimeline(mode);
+};
+
+type ViewerStore = {
+  view: GlobeViewState;
+  targetView: GlobeViewState;
+  telemetry: HudTelemetry;
+  viewerMode: ViewerMode;
+  headwayView: HeadwayViewState;
+  headwayRenderState: HeadwayRenderState;
+  headwayErrorMessage: string | null;
+  quality: QualityMode;
+  axisLockMode: AxisLockMode;
+  compareModeState: CompareModeState;
+  selectedCountry: SelectedCountry | null;
+  geoOverviewAnchor: GeoOverviewAnchor | null;
+  geoOverviewHeadingDeg: number;
+  loadState: LoadState;
+  renderState: RenderState;
+  rendererTier: RendererTier | null;
+  rendererAttempts: RendererTier[];
+  rendererFailureReason: RendererFailureReason;
+  rendererFailureMessage: string | null;
+  showOnboarding: boolean;
+  isFullscreen: boolean;
+  isFrozen: boolean;
+  showBorders: boolean;
+  isAnimating: boolean;
+  activeAxis: RotationAxis;
+  hasInteracted: boolean;
+  lastShareUrl: string | null;
+  errorMessage: string | null;
+  animationDraft: AnimationTimeline;
+  animationImportHex: string;
+  animationImportError: string | null;
+  animationSession: AnimationSessionState;
+  setViewerMode: (mode: ViewerMode) => void;
+  setHeadwayView: (view: HeadwayViewState) => void;
+  setHeadwayRenderState: (state: HeadwayRenderState) => void;
+  setHeadwayErrorMessage: (message: string | null) => void;
+  setQuality: (quality: QualityMode) => void;
+  setAxisLockMode: (mode: AxisLockMode) => void;
+  toggleAxisLock: () => void;
+  setCompareModeState: (state: CompareModeState) => void;
+  setSelectedCountry: (country: SelectedCountry | null) => void;
+  setGeoOverviewAnchor: (anchor: GeoOverviewAnchor | null) => void;
+  setGeoOverviewHeading: (headingDeg: number) => void;
+  clearGeoOverviewState: () => void;
+  armCountryCompare: () => void;
+  pinCountry: (country: SelectedCountry) => void;
+  clearPinnedCountry: () => void;
+  disableCountryCompare: () => void;
+  setLoadState: (state: LoadState) => void;
+  setRenderState: (state: RenderState) => void;
+  setRendererDiagnostics: (input: {
+    tier?: RendererTier | null;
+    attemptedTiers?: RendererTier[];
+    reason?: RendererFailureReason;
+    message?: string | null;
+  }) => void;
+  resetRendererDiagnostics: () => void;
+  setShowOnboarding: (visible: boolean) => void;
+  setFullscreen: (enabled: boolean) => void;
+  setFrozen: (enabled: boolean) => void;
+  toggleFrozen: () => void;
+  setShowBorders: (enabled: boolean) => void;
+  toggleShowBorders: () => void;
+  setActiveAxis: (axis: RotationAxis) => void;
+  setErrorMessage: (message: string | null) => void;
+  markInteracted: () => void;
+  animateToView: (view: GlobeViewState) => void;
+  applyImmediateView: (view: GlobeViewState) => void;
+  commitFrame: (
+    view: GlobeViewState,
+    telemetry: HudTelemetry,
+    isAnimating: boolean,
+  ) => void;
+  setLastShareUrl: (url: string | null) => void;
+  openAnimationWorkspace: (input: {
+    playheadMs?: number;
+    previewGeoView?: GlobeViewState | null;
+    previewHeadwayView?: HeadwayViewState | null;
+  }) => void;
+  closeAnimationWorkspace: () => void;
+  setAnimationDraft: (
+    next:
+      | AnimationTimeline
+      | ((draft: AnimationTimeline) => AnimationTimeline),
+  ) => void;
+  loadAnimationDraft: (timeline: AnimationTimeline) => void;
+  setAnimationImportHex: (hex: string) => void;
+  setAnimationImportError: (error: string | null) => void;
+  setAnimationPlayhead: (playheadMs: number) => void;
+  setAnimationPreviewViews: (input: {
+    playheadMs?: number;
+    previewGeoView?: GlobeViewState | null;
+    previewHeadwayView?: HeadwayViewState | null;
+  }) => void;
+  startAnimationPlayback: (input: {
+    startedAtMs: number;
+    playheadMs?: number;
+  }) => void;
+  stopAnimationPlayback: (input?: { playheadMs?: number }) => void;
+};
+
+export const useViewerStore = create<ViewerStore>((set) => ({
+  view: cloneView(DEFAULT_VIEW),
+  targetView: cloneView(DEFAULT_VIEW),
+  telemetry: EMPTY_TELEMETRY,
+  viewerMode: 'geo',
+  headwayView: { ...DEFAULT_HEADWAY_VIEW },
+  headwayRenderState: 'idle',
+  headwayErrorMessage: null,
+  quality: 'balanced',
+  axisLockMode: 'free',
+  compareModeState: 'off',
+  selectedCountry: null,
+  geoOverviewAnchor: null,
+  geoOverviewHeadingDeg: 0,
+  loadState: 'booting',
+  renderState: 'initializing',
+  rendererTier: null,
+  rendererAttempts: [],
+  rendererFailureReason: null,
+  rendererFailureMessage: null,
+  showOnboarding: true,
+  isFullscreen: false,
+  isFrozen: false,
+  showBorders: false,
+  isAnimating: false,
+  activeAxis: null,
+  hasInteracted: false,
+  lastShareUrl: null,
+  errorMessage: null,
+  animationDraft: createDefaultAnimationTimeline('geo'),
+  animationImportHex: '',
+  animationImportError: null,
+  animationSession: DEFAULT_ANIMATION_SESSION,
+  setViewerMode: (viewerMode) => set({ viewerMode }),
+  setHeadwayView: (headwayView) =>
+    set({
+      headwayView: cloneHeadwayView(headwayView),
+    }),
+  setHeadwayRenderState: (headwayRenderState) => set({ headwayRenderState }),
+  setHeadwayErrorMessage: (headwayErrorMessage) => set({ headwayErrorMessage }),
+  setQuality: (quality) => set({ quality }),
+  setAxisLockMode: (axisLockMode) => set({ axisLockMode, activeAxis: null }),
+  toggleAxisLock: () =>
+    set((state) => ({
+      axisLockMode: state.axisLockMode === 'free' ? 'axis-lock' : 'free',
+      activeAxis: null,
+    })),
+  setCompareModeState: (compareModeState) => set({ compareModeState }),
+  setSelectedCountry: (selectedCountry) =>
+    set({
+      selectedCountry:
+        selectedCountry === null
+          ? null
+          : {
+              ...selectedCountry,
+              centroid: [...selectedCountry.centroid] as SelectedCountry['centroid'],
+            },
+    }),
+  setGeoOverviewAnchor: (geoOverviewAnchor) =>
+    set({
+      geoOverviewAnchor:
+        geoOverviewAnchor === null ? null : { ...geoOverviewAnchor },
+    }),
+  setGeoOverviewHeading: (geoOverviewHeadingDeg) =>
+    set({ geoOverviewHeadingDeg }),
+  clearGeoOverviewState: () =>
+    set({
+      geoOverviewAnchor: null,
+      geoOverviewHeadingDeg: 0,
+    }),
+  armCountryCompare: () =>
+    set({
+      compareModeState: 'armed',
+      selectedCountry: null,
+    }),
+  pinCountry: (country) =>
+    set({
+      compareModeState: 'pinned',
+      selectedCountry: {
+        ...country,
+        centroid: [...country.centroid] as SelectedCountry['centroid'],
+      },
+    }),
+  clearPinnedCountry: () =>
+    set((state) => ({
+      compareModeState: state.compareModeState === 'off' ? 'off' : 'armed',
+      selectedCountry: null,
+    })),
+  disableCountryCompare: () =>
+    set({
+      compareModeState: 'off',
+      selectedCountry: null,
+    }),
+  setLoadState: (loadState) => set({ loadState }),
+  setRenderState: (renderState) => set({ renderState }),
+  setRendererDiagnostics: ({ tier, attemptedTiers, reason, message }) =>
+    set((state) => ({
+      rendererTier: tier ?? state.rendererTier,
+      rendererAttempts: attemptedTiers ?? state.rendererAttempts,
+      rendererFailureReason:
+        reason === undefined ? state.rendererFailureReason : reason,
+      rendererFailureMessage:
+        message === undefined ? state.rendererFailureMessage : message,
+    })),
+  resetRendererDiagnostics: () =>
+    set({
+      rendererTier: null,
+      rendererAttempts: [],
+      rendererFailureReason: null,
+      rendererFailureMessage: null,
+    }),
+  setShowOnboarding: (showOnboarding) => set({ showOnboarding }),
+  setFullscreen: (isFullscreen) => set({ isFullscreen }),
+  setFrozen: (isFrozen) =>
+    set((state) => ({
+      isFrozen,
+      targetView: isFrozen ? cloneView(state.view) : state.targetView,
+      isAnimating: isFrozen ? false : state.isAnimating,
+      activeAxis: isFrozen ? null : state.activeAxis,
+    })),
+  toggleFrozen: () =>
+    set((state) => ({
+      isFrozen: !state.isFrozen,
+      targetView: state.isFrozen ? state.targetView : cloneView(state.view),
+      isAnimating: state.isFrozen ? state.isAnimating : false,
+      activeAxis: null,
+    })),
+  setShowBorders: (showBorders) => set({ showBorders }),
+  toggleShowBorders: () =>
+    set((state) => ({ showBorders: !state.showBorders })),
+  setActiveAxis: (activeAxis) => set({ activeAxis }),
+  setErrorMessage: (errorMessage) => set({ errorMessage }),
+  markInteracted: () => set({ hasInteracted: true, showOnboarding: false }),
+  animateToView: (view) =>
+    set((state) =>
+      state.isFrozen
+        ? {}
+        : { targetView: cloneView(view), isAnimating: true },
+    ),
+  applyImmediateView: (view) =>
+    set({
+      view: cloneView(view),
+      targetView: cloneView(view),
+      isAnimating: false,
+    }),
+  commitFrame: (view, telemetry, isAnimating) =>
+    set({ view, telemetry, isAnimating }),
+  setLastShareUrl: (lastShareUrl) => set({ lastShareUrl }),
+  openAnimationWorkspace: ({
+    playheadMs = 0,
+    previewGeoView,
+    previewHeadwayView,
+  }) =>
+    set({
+      animationImportError: null,
+      animationSession: {
+        workspaceOpen: true,
+        phase: 'idle',
+        startedAtMs: null,
+        playheadMs: Math.max(0, Math.round(playheadMs)),
+        previewGeoView:
+          previewGeoView === null
+            ? null
+            : previewGeoView
+              ? cloneView(previewGeoView)
+              : null,
+        previewHeadwayView:
+          previewHeadwayView === null
+            ? null
+            : previewHeadwayView
+              ? cloneHeadwayView(previewHeadwayView)
+              : null,
+      },
+    }),
+  closeAnimationWorkspace: () =>
+    set({
+      animationImportError: null,
+      animationSession: { ...DEFAULT_ANIMATION_SESSION },
+    }),
+  setAnimationDraft: (next) =>
+    set((state) => {
+      const draft =
+        typeof next === 'function' ? next(state.animationDraft) : next;
+      const normalized = normalizeAnimationTimeline(draft, draft.mode);
+
+      persistAnimationDraft(normalized);
+
+      return {
+        animationDraft: cloneAnimationTimeline(normalized),
+      };
+    }),
+  loadAnimationDraft: (timeline) =>
+    set(() => {
+      const normalized = normalizeAnimationTimeline(timeline, timeline.mode);
+
+      persistAnimationDraft(normalized);
+
+      return {
+        animationDraft: cloneAnimationTimeline(normalized),
+      };
+    }),
+  setAnimationImportHex: (animationImportHex) =>
+    set({ animationImportHex }),
+  setAnimationImportError: (animationImportError) =>
+    set({ animationImportError }),
+  setAnimationPlayhead: (playheadMs) =>
+    set((state) => ({
+      animationSession: {
+        ...state.animationSession,
+        playheadMs: Math.max(0, Math.round(playheadMs)),
+      },
+    })),
+  setAnimationPreviewViews: ({
+    playheadMs,
+    previewGeoView,
+    previewHeadwayView,
+  }) =>
+    set((state) => ({
+      animationSession: {
+        ...state.animationSession,
+        playheadMs:
+          playheadMs === undefined
+            ? state.animationSession.playheadMs
+            : Math.max(0, Math.round(playheadMs)),
+        previewGeoView:
+          previewGeoView === undefined
+            ? state.animationSession.previewGeoView
+            : previewGeoView === null
+              ? null
+              : cloneView(previewGeoView),
+        previewHeadwayView:
+          previewHeadwayView === undefined
+            ? state.animationSession.previewHeadwayView
+            : previewHeadwayView === null
+              ? null
+              : cloneHeadwayView(previewHeadwayView),
+      },
+    })),
+  startAnimationPlayback: ({ startedAtMs, playheadMs }) =>
+    set((state) => ({
+      animationSession: {
+        ...state.animationSession,
+        workspaceOpen: true,
+        phase: 'playing',
+        startedAtMs,
+        playheadMs:
+          playheadMs === undefined
+            ? state.animationSession.playheadMs
+            : Math.max(0, Math.round(playheadMs)),
+      },
+    })),
+  stopAnimationPlayback: (input) =>
+    set((state) => ({
+      animationSession: {
+        ...state.animationSession,
+        phase: 'idle',
+        startedAtMs: null,
+        playheadMs:
+          input?.playheadMs === undefined
+            ? state.animationSession.playheadMs
+            : Math.max(0, Math.round(input.playheadMs)),
+      },
+    })),
+}));
