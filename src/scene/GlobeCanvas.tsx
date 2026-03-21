@@ -8,11 +8,14 @@ import type { DirectionalLight, Group } from 'three';
 import { LOCAL_SUN_DIRECTION } from '../lib/constants';
 import {
   getCloseZoomInfluence,
-  getGeoAnchorScreenY,
+  getGeoActualSurfaceAngleDeg,
+  getGeoCameraTransitionT,
   getGeoControlMode,
-  getGeoEffectiveFov,
-  getGeoAnchorNdcY,
   getGeoApparentScale,
+  getGeoDesiredSurfaceAngleDeg,
+  getGeoEffectiveFov,
+  getGeoLinearZoomT,
+  getGeoLookPitchDeg,
   getGeoTargetApparentScale,
   getOverviewPinnedSurfaceDebug,
 } from '../lib/camera';
@@ -212,8 +215,10 @@ function GeoOverviewDebugOverlay() {
     return null;
   }
 
-  const anchorScreenY = getGeoAnchorScreenY(view.distance);
-  const anchorNdcY = getGeoAnchorNdcY(view.distance);
+  const linearZoomT = getGeoLinearZoomT(view.distance);
+  const cameraTransitionT = getGeoCameraTransitionT(view.distance);
+  const lookPitchDeg = getGeoLookPitchDeg(view.distance);
+  const desiredSurfaceAngleDeg = getGeoDesiredSurfaceAngleDeg(view.distance);
   const closeInfluence = getCloseZoomInfluence(view.distance);
   const effectiveFov = getGeoEffectiveFov(view);
   const apparentScale = getGeoApparentScale({
@@ -223,6 +228,11 @@ function GeoOverviewDebugOverlay() {
   const targetApparentScale = getGeoTargetApparentScale(view);
   const controlMode = getGeoControlMode(view.distance);
   const pinnedSurfaceDebug = getOverviewPinnedSurfaceDebug(view);
+  const anchorScreenY = (1 - pinnedSurfaceDebug.anchorNdcY) / 2;
+  const actualSurfaceAngleDeg = getGeoActualSurfaceAngleDeg(
+    view,
+    pinnedSurfaceDebug.anchorNdcY,
+  );
 
   return (
     <div
@@ -253,9 +263,14 @@ function GeoOverviewDebugOverlay() {
         }}
       >
         <div>closeInfluence: {closeInfluence.toFixed(3)}</div>
+        <div>linearZoomT: {linearZoomT.toFixed(3)}</div>
+        <div>cameraTransitionT: {cameraTransitionT.toFixed(3)}</div>
         <div>controlMode: {controlMode}</div>
+        <div>lookPitchDeg: {lookPitchDeg.toFixed(2)}</div>
+        <div>desiredSurfaceAngle: {desiredSurfaceAngleDeg.toFixed(2)}</div>
+        <div>actualSurfaceAngle: {actualSurfaceAngleDeg.toFixed(2)}</div>
         <div>anchorY: {(anchorScreenY * 100).toFixed(1)}%</div>
-        <div>anchorNdcY: {anchorNdcY.toFixed(3)}</div>
+        <div>anchorNdcY: {pinnedSurfaceDebug.anchorNdcY.toFixed(3)}</div>
         <div>
           pinnedNdcY: {pinnedSurfaceDebug.anchorNdcY.toFixed(3)}
         </div>

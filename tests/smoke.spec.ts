@@ -212,7 +212,7 @@ test('animation editor exposes the Geo start pose fields', async ({ page }) => {
 
   const frameBox = await frame.boundingBox();
   expect(frameBox).not.toBeNull();
-  expect(frameBox!.width).toBeLessThanOrEqual(920);
+  expect(frameBox!.width).toBeLessThanOrEqual(840);
 });
 
 test('ultrawide animation workspace keeps the command strips on one row', async ({
@@ -231,7 +231,7 @@ test('ultrawide animation workspace keeps the command strips on one row', async 
 
   const frameBox = await frame.boundingBox();
   expect(frameBox).not.toBeNull();
-  expect(frameBox!.width).toBeLessThanOrEqual(920);
+  expect(frameBox!.width).toBeLessThanOrEqual(840);
 
   const moveButtons = page
     .getByRole('group', { name: /move commands/i })

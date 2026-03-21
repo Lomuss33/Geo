@@ -49,6 +49,7 @@ import {
   getCloseZoomInfluence,
   getGeoCameraPose,
   getGeoControlMode,
+  getGeoLinearZoomT,
   getResponsiveStartupGeoView,
   moveGeoOverviewAnchor,
   stepGeoOverviewHeading,
@@ -171,16 +172,16 @@ export function GlobeController({
 
   const resolveGeoOverviewState = useCallback(
     (view: GlobeViewState) => {
-      const influence = getCloseZoomInfluence(view.distance);
+      const linearZoomT = getGeoLinearZoomT(view.distance);
       let anchor = useViewerStore.getState().geoOverviewAnchor;
       let headingDeg = useViewerStore.getState().geoOverviewHeadingDeg;
 
-      if (!anchor && influence > 1e-4) {
+      if (!anchor && linearZoomT > 1e-4) {
         anchor = deriveGeoCenteredAnchor(view);
         headingDeg = deriveGeoOverviewHeading(view, anchor);
         setGeoOverviewAnchor(anchor);
         setGeoOverviewHeading(headingDeg);
-      } else if (anchor && influence <= 1e-4) {
+      } else if (anchor && linearZoomT <= 1e-4) {
         clearGeoOverviewState();
         anchor = null;
         headingDeg = 0;
