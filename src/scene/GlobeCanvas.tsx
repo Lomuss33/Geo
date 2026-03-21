@@ -148,9 +148,15 @@ function Scene({
     <>
       <color attach="background" args={['#040915']} />
       <fog attach="fog" args={['#040915', 7.5, 16]} />
-      <ambientLight intensity={quality === 'performance' ? 0.38 : 0.46} />
-      <directionalLight color="#cfe6ff" intensity={1.34} ref={lightRef} />
-      <pointLight color="#8ed6ff" intensity={0.18} position={[-5, 0, -8]} />
+      <ambientLight
+        color="#eef4fb"
+        intensity={quality === 'performance' ? 0.76 : 0.84}
+      />
+      <hemisphereLight
+        args={['#f8fbff', '#d4deea', quality === 'performance' ? 0.36 : 0.42]}
+      />
+      <directionalLight color="#fffdf7" intensity={0.96} ref={lightRef} />
+      <pointLight color="#f3f8ff" intensity={0.18} position={[-5, 0.5, -8]} />
       <Stars
         radius={120}
         depth={60}

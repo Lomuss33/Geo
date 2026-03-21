@@ -5,7 +5,10 @@ type BrandPanelProps = {
 export function BrandPanel({ compact = false }: BrandPanelProps) {
   if (compact) {
     return (
-      <div className="brand-panel brand-panel--compact" aria-label="Viewer footer">
+      <div
+        className="brand-panel brand-panel--compact"
+        aria-label="Viewer overview"
+      >
         <p className="panel-kicker">Geo // GitHub Pages</p>
         <p className="brand-panel__title">3D Earth navigation</p>
       </div>

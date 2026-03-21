@@ -1,8 +1,7 @@
 import atlas from 'world-atlas/countries-110m.json';
 import { feature } from 'topojson-client';
 import { Vector3 } from 'three';
-import { FRONT_VECTOR } from './constants';
-import { latLonToVector3, quaternionFromCenteredLatLon, vector3ToLatLon } from './geo';
+import { latLonToVector3, vector3ToLatLon } from './geo';
 
 type Ring = Array<[lng: number, lat: number]>;
 
@@ -176,31 +175,6 @@ const pointInCountry = (lng: number, lat: number, country: CountryPolygon) => {
   return false;
 };
 
-const projectRing = (
-  ring: Ring,
-  rotation: ReturnType<typeof quaternionFromCenteredLatLon>,
-  viewScale: { widthPx: number; heightPx: number; zoomFactor: number },
-) => {
-  const centerX = viewScale.widthPx / 2;
-  const centerY = viewScale.heightPx / 2;
-  const commands: string[] = [];
-
-  for (let index = 0; index < ring.length; index += 1) {
-    const [lng, lat] = ring[index]!;
-    const rotated = latLonToVector3(lat, lng).applyQuaternion(rotation);
-    const x = centerX + rotated.x * viewScale.zoomFactor;
-    const y = centerY - rotated.y * viewScale.zoomFactor;
-    commands.push(`${index === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`);
-  }
-
-  if (commands.length === 0) {
-    return '';
-  }
-
-  commands.push('Z');
-  return commands.join(' ');
-};
-
 export const getAllCountries = () => allCountries;
 
 export const getCountryById = (id: string) => countriesById.get(id) ?? null;
@@ -214,24 +188,3 @@ export const findCountryByLatLon = (lng: number, lat: number) => {
 
   return null;
 };
-
-export const buildCountryFrontProjection = (
-  country: CountryPolygon,
-  viewScale: { widthPx: number; heightPx: number; zoomFactor: number },
-) => {
-  const [centroidLng, centroidLat] = country.centroid;
-  const rotation = quaternionFromCenteredLatLon(
-    centroidLat,
-    centroidLng,
-  );
-
-  return country.polygons
-    .flatMap((polygon) =>
-      polygon.map((ring) => projectRing(ring, rotation, viewScale)),
-    )
-    .filter(Boolean)
-    .join(' ');
-};
-
-export const getCountryFrontNormal = (country: CountryPolygon) =>
-  latLonToVector3(country.centroid[1], country.centroid[0]).dot(FRONT_VECTOR);

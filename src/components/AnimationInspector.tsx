@@ -3,6 +3,7 @@ import {
   getAnimationAmountHint,
   getAnimationCommandOption,
 } from './animationCommandConfig';
+import { WorkspaceIconButton } from './WorkspaceIconButton';
 import type {
   AnimationBlock,
   ViewerMode,
@@ -253,7 +254,10 @@ export function AnimationInspector({
           />
         </label>
 
-        <label className="field field--checkbox">
+      </div>
+
+      <div className="animation-inspector__controls">
+        <label className="field field--checkbox animation-inspector__toggle">
           <span>Enabled</span>
           <input
             checked={resolvedFormState.enabled}
@@ -263,22 +267,22 @@ export function AnimationInspector({
             type="checkbox"
           />
         </label>
+
+        <div className="animation-inspector__actions">
+          <WorkspaceIconButton
+            icon="apply"
+            label="Apply"
+            onClick={handleApply}
+          />
+          <WorkspaceIconButton
+            icon="delete"
+            label="Delete clip"
+            onClick={() => onDeleteBlock(selectedBlock.id)}
+          />
+        </div>
       </div>
 
       {error ? <p className="animation-workspace__error">{error}</p> : null}
-
-      <div className="button-row">
-        <button className="primary-button" onClick={handleApply} type="button">
-          Apply
-        </button>
-        <button
-          className="secondary-button"
-          onClick={() => onDeleteBlock(selectedBlock.id)}
-          type="button"
-        >
-          Delete clip
-        </button>
-      </div>
     </section>
   );
 }

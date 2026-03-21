@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_VIEW, MIN_DISTANCE } from './constants';
+import { DEFAULT_VIEW, MAX_DISTANCE, MIN_DISTANCE } from './constants';
 import {
   distanceToHeadwayZoom,
   geoFromHeadway,
@@ -10,13 +10,13 @@ import {
 
 describe('mode bridge', () => {
   it('maps geo distance anchors onto explicit Headway zoom anchors', () => {
-    expect(distanceToHeadwayZoom(6.2)).toBeCloseTo(0.8, 3);
+    expect(distanceToHeadwayZoom(MAX_DISTANCE)).toBeCloseTo(0.8, 3);
     expect(distanceToHeadwayZoom(3.15)).toBeCloseTo(1.8, 3);
     expect(distanceToHeadwayZoom(MIN_DISTANCE)).toBeCloseTo(3.2, 3);
   });
 
   it('inverts Headway zoom anchors back to geo distance anchors', () => {
-    expect(headwayZoomToDistance(0.8)).toBeCloseTo(6.2, 3);
+    expect(headwayZoomToDistance(0.8)).toBeCloseTo(MAX_DISTANCE, 3);
     expect(headwayZoomToDistance(1.8)).toBeCloseTo(3.15, 3);
     expect(headwayZoomToDistance(3.2)).toBeCloseTo(MIN_DISTANCE, 3);
   });

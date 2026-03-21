@@ -58,16 +58,42 @@ const readViewportScrollMetrics = async (
     scrollWidth: document.documentElement.scrollWidth,
   }));
 
+const openAnimationSection = async (page: import('@playwright/test').Page) => {
+  const toggle = page.getByRole('button', {
+    name: /toggle animation section/i,
+  });
+
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+};
+
+const openMotionSection = async (page: import('@playwright/test').Page) => {
+  const toggle = page.getByRole('button', { name: /toggle motion section/i });
+
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+};
+
+const openViewpointsSection = async (page: import('@playwright/test').Page) => {
+  const toggle = page.getByRole('button', {
+    name: /toggle viewpoints section/i,
+  });
+
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+};
+
 test('loads the viewer shell', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await primeDismissedOnboarding(page);
   await page.goto('/');
-  await expect(
-    page.locator('.overlay-rail--left').getByText(/geo \/\/ github pages/i),
-  ).toBeVisible();
+  await expect(page.locator('.overlay-rail--left')).toBeVisible();
+  await expect(page.getByLabel('Viewer overview').first()).toBeVisible();
   await expect(page.getByRole('tab', { name: /headway/i })).toBeVisible();
   await expect(page.locator('.top-bar')).toHaveCount(0);
-  await expect(page.locator('.overlay-rail--left')).toBeVisible();
   await expect(page.locator('.overlay-rail--right')).toBeVisible();
 
   const onboardingButton = page.getByRole('button', {
@@ -96,9 +122,12 @@ test('loads the viewer shell', async ({ page }) => {
 
   if ((await onboardingButton.isVisible().catch(() => false)) === true) {
     await expect(onboardingButton).toBeVisible();
-    const controlsPanel = page.getByLabel('Viewer controls');
-    await expect(controlsPanel.getByRole('button', { name: /freeze/i })).toBeVisible();
-    await expect(controlsPanel.getByRole('button', { name: /^borders$/i })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /toggle motion section/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /toggle animation section/i }),
+    ).toBeVisible();
     return;
   }
 
@@ -123,10 +152,15 @@ test('can switch into Headway mode without breaking the shell', async ({
   await page.getByRole('tab', { name: /headway/i }).click();
 
   const controlsPanel = page.getByLabel('Viewer controls');
-  await expect(controlsPanel.getByRole('button', { name: /axis lock/i })).toBeVisible();
-  await expect(controlsPanel.getByRole('button', { name: /axis reset/i })).toBeVisible();
-  await expect(controlsPanel.getByRole('button', { name: /freeze/i })).toBeVisible();
-  await expect(controlsPanel.getByRole('button', { name: /borders/i })).toBeVisible();
+  await expect(
+    controlsPanel.getByRole('button', { name: /axis lock/i }),
+  ).toBeVisible();
+  await expect(
+    controlsPanel.getByRole('button', { name: /axis reset/i }),
+  ).toBeVisible();
+  await openMotionSection(page);
+  await expect(page.getByRole('button', { name: /freeze/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /borders/i })).toBeVisible();
 
   const headwayCanvas = page.locator('.headway-map .maplibregl-canvas');
   const headwayFallback = page.getByRole('heading', {
@@ -157,13 +191,58 @@ test('animation editor exposes the Geo start pose fields', async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingIfVisible(page);
 
+  await openAnimationSection(page);
   await page.getByRole('button', { name: /open editor/i }).click();
 
-  await expect(page.getByRole('spinbutton', { name: /latitude/i })).toBeVisible();
-  await expect(page.getByRole('spinbutton', { name: /longitude/i })).toBeVisible();
-  await expect(page.getByRole('spinbutton', { name: /distance/i })).toBeVisible();
+  const frame = page.locator('.animation-workspace__frame--bounded');
+  await expect(frame).toBeVisible();
+
+  await expect(
+    page.getByRole('spinbutton', { name: /latitude/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('spinbutton', { name: /longitude/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('spinbutton', { name: /distance/i }),
+  ).toBeVisible();
   await expect(page.getByRole('spinbutton', { name: /roll/i })).toBeVisible();
   await expect(page.getByRole('spinbutton', { name: /^fov$/i })).toBeVisible();
+  await expect(page.locator('.animation-workspace__helper[open]')).toHaveCount(0);
+
+  const frameBox = await frame.boundingBox();
+  expect(frameBox).not.toBeNull();
+  expect(frameBox!.width).toBeLessThanOrEqual(920);
+});
+
+test('ultrawide animation workspace keeps the command strips on one row', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 2560, height: 1080 });
+  await primeDismissedOnboarding(page);
+  await page.goto('/');
+  await dismissOnboardingIfVisible(page);
+
+  await openAnimationSection(page);
+  await page.getByRole('button', { name: /open editor/i }).click();
+
+  const frame = page.locator('.animation-workspace__frame--bounded');
+  await expect(frame).toBeVisible();
+
+  const frameBox = await frame.boundingBox();
+  expect(frameBox).not.toBeNull();
+  expect(frameBox!.width).toBeLessThanOrEqual(920);
+
+  const moveButtons = page
+    .getByRole('group', { name: /move commands/i })
+    .getByRole('button');
+  await expect(moveButtons).toHaveCount(6);
+
+  const firstButtonBox = await moveButtons.nth(0).boundingBox();
+  const lastButtonBox = await moveButtons.nth(5).boundingBox();
+  expect(firstButtonBox).not.toBeNull();
+  expect(lastButtonBox).not.toBeNull();
+  expect(Math.abs(firstButtonBox!.y - lastButtonBox!.y)).toBeLessThanOrEqual(2);
 });
 
 test('help copy lists roll controls and no longer mentions trim pads', async ({
@@ -176,13 +255,36 @@ test('help copy lists roll controls and no longer mentions trim pads', async ({
 
   await page.getByRole('button', { name: /help/i }).click();
 
-  await expect(
-    page.getByText(/right drag \/ shift\+drag/i),
-  ).toBeVisible();
+  await expect(page.getByText(/right drag \/ shift\+drag/i)).toBeVisible();
   await expect(
     page.getByText(/locked camera with saved start pose/i),
   ).toBeVisible();
   await expect(page.getByText(/view trim pads/i)).toHaveCount(0);
+});
+
+test('compare mode can be armed and canceled from the overlay', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await primeDismissedOnboarding(page);
+  await page.goto('/');
+  await dismissOnboardingIfVisible(page);
+
+  await page.getByRole('button', { name: /^compare$/i }).click();
+
+  await expect(page.getByTestId('country-compare-armed')).toBeVisible();
+  await expect(
+    page
+      .getByTestId('country-compare-armed')
+      .getByText(/click a visible country to pin its live outline/i),
+  ).toBeVisible();
+
+  await page
+    .getByRole('button', { name: /cancel compare mode/i })
+    .click();
+
+  await expect(page.getByTestId('country-compare-armed')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^compare$/i })).toBeVisible();
 });
 
 test('playback shows a stop control overlay and can be stopped', async ({
@@ -194,6 +296,7 @@ test('playback shows a stop control overlay and can be stopped', async ({
   await page.goto('/');
   await dismissOnboardingIfVisible(page);
 
+  await openAnimationSection(page);
   await expect(page.getByRole('button', { name: /^play$/i })).toBeEnabled();
   await page.getByRole('button', { name: /^play$/i }).click();
 
@@ -205,10 +308,14 @@ test('playback shows a stop control overlay and can be stopped', async ({
   ).toBeVisible();
 
   await page.getByRole('button', { name: /stop playback/i }).click();
-  await expect(page.locator('[aria-label="Animation workspace"]')).toBeVisible();
+  await expect(
+    page.locator('[aria-label="Animation workspace"]'),
+  ).toBeVisible();
 });
 
-test('monitor viewport stays fixed without page scrolling', async ({ page }) => {
+test('monitor viewport stays fixed without page scrolling', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await primeDismissedOnboarding(page);
   await page.goto('/');
@@ -221,12 +328,36 @@ test('monitor viewport stays fixed without page scrolling', async ({ page }) => 
   await expect(page.locator('.overlay-rail--left')).toBeVisible();
   await expect(page.locator('.overlay-rail--right')).toBeVisible();
   await page.getByRole('button', { name: /minimize status rail/i }).click();
-  await expect(page.locator('.overlay-rail--left')).toHaveClass(/overlay-rail--collapsed/);
-  await page.locator('.overlay-tab--left').click();
-  await expect(page.locator('.overlay-rail--left')).toHaveClass(/overlay-rail--open/);
+  await expect(page.locator('.overlay-rail--left')).toHaveClass(
+    /overlay-rail--collapsed/,
+  );
+  await page.getByRole('button', { name: /open status rail/i }).click();
+  await expect(page.locator('.overlay-rail--left')).toHaveClass(
+    /overlay-rail--open/,
+  );
 });
 
-test('tablet viewport uses collapsed tabs and never scrolls the page', async ({
+test('secondary control sections expand to reveal animation and viewpoint tools', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await primeDismissedOnboarding(page);
+  await page.goto('/');
+  await dismissOnboardingIfVisible(page);
+
+  await openAnimationSection(page);
+  await expect(page.getByText(/geo timeline/i)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /open editor/i }),
+  ).toBeVisible();
+
+  await openViewpointsSection(page);
+  await expect(
+    page.getByRole('button', { name: /atlantic drift/i }),
+  ).toBeVisible();
+});
+
+test('single-rail viewport opens the control rail by default and never scrolls the page', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
@@ -241,11 +372,19 @@ test('tablet viewport uses collapsed tabs and never scrolls the page', async ({
 
   await expect(page.locator('.overlay-tab--left')).toBeVisible();
   await expect(page.locator('.overlay-tab--right')).toBeVisible();
-  await page.locator('.overlay-tab--left').click();
-  await expect(page.locator('.overlay-rail--left')).toHaveClass(/overlay-rail--open/);
-  await page.locator('.overlay-tab--right').click();
-  await expect(page.locator('.overlay-rail--right')).toHaveClass(/overlay-rail--open/);
-  await expect(page.locator('.overlay-rail--left')).toHaveClass(/overlay-rail--collapsed/);
+  await expect(page.locator('.overlay-rail--left')).toHaveClass(
+    /overlay-rail--collapsed/,
+  );
+  await expect(page.locator('.overlay-rail--right')).toHaveClass(
+    /overlay-rail--open/,
+  );
+  await expect(
+    page.getByRole('button', { name: /close control rail/i }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: /close control rail/i }).click();
+  await expect(page.locator('.overlay-rail--right')).toHaveClass(
+    /overlay-rail--collapsed/,
+  );
 });
 
 test('mobile viewport uses edge tabs and never scrolls the page', async ({
@@ -264,6 +403,25 @@ test('mobile viewport uses edge tabs and never scrolls the page', async ({
   await expect(page.locator('.overlay-tab--left')).toBeVisible();
   await expect(page.locator('.overlay-tab--right')).toBeVisible();
   await page.locator('.overlay-tab--right').click();
-  await expect(page.locator('.overlay-rail--right')).toHaveClass(/overlay-rail--open/);
+  await expect(page.locator('.overlay-rail--right')).toHaveClass(
+    /overlay-rail--open/,
+  );
   await expect(page.getByLabel('Viewer controls')).toBeVisible();
+});
+
+test('tablet drawer viewport opens the control rail by default', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 900, height: 1200 });
+  await primeDismissedOnboarding(page);
+  await page.goto('/');
+  await dismissOnboardingIfVisible(page);
+
+  await expect(page.locator('.overlay-shell--tablet')).toBeVisible();
+  await expect(page.locator('.overlay-rail--right')).toHaveClass(
+    /overlay-rail--open/,
+  );
+  await expect(page.locator('.overlay-rail--left')).toHaveClass(
+    /overlay-rail--collapsed/,
+  );
 });

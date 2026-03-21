@@ -11,11 +11,13 @@ import {
   applyHumanViewConstraint,
   deriveGeoOverviewHeading,
   deriveSurfaceAnchor,
+  getCloseZoomInfluence,
   getGeoAnchorScreenY,
   getGeoApparentScale,
   getGeoCameraPose,
   getGeoControlMode,
   getGeoEffectiveFov,
+  getGeoViewportCoverage,
   getGeoTargetApparentScale,
   getResponsiveStartupGeoView,
   getOverviewPinnedSurfaceDebug,
@@ -24,6 +26,7 @@ import {
   stepGeoOverviewHeading,
   surfaceAnchoredGeoView,
 } from './camera';
+import { quaternionFromArray } from './math';
 
 describe('camera helpers', () => {
   it('keeps the far and default view centered on the globe', () => {
@@ -51,13 +54,13 @@ describe('camera helpers', () => {
     expect(pose.target[0]).toBeCloseTo(0, 6);
     expect(pose.target[1]).toBeCloseTo(1.04, 3);
     expect(pose.target[2]).toBeCloseTo(0, 6);
-    expect(pose.effectiveFov).toBeGreaterThan(38);
-    expect(pose.effectiveFov).toBeLessThan(39);
+    expect(pose.effectiveFov).toBeGreaterThan(30);
+    expect(pose.effectiveFov).toBeLessThan(31);
   });
 
   it('keeps the anchor centered far out and pushes it to the bottom fifth up close', () => {
     expect(getGeoAnchorScreenY(DEFAULT_DISTANCE)).toBeCloseTo(0.5, 6);
-    expect(getGeoAnchorScreenY(MIN_DISTANCE)).toBeCloseTo(0.95, 6);
+    expect(getGeoAnchorScreenY(MIN_DISTANCE)).toBeCloseTo(0.88, 6);
   });
 
   it('widens the render FOV only as the view moves into overview mode', () => {
@@ -65,7 +68,7 @@ describe('camera helpers', () => {
       getGeoEffectiveFov(viewFromLatLon(0, 0, DEFAULT_DISTANCE)),
     ).toBeCloseTo(DEFAULT_FOV, 6);
     expect(getGeoEffectiveFov(viewFromLatLon(0, 0, MIN_DISTANCE))).toBeCloseTo(
-      38.505197,
+      30.637653,
       5,
     );
   });
@@ -87,10 +90,35 @@ describe('camera helpers', () => {
       844,
     );
 
-    expect(desktop.distance).toBeCloseTo(DEFAULT_DISTANCE, 3);
-    expect(tablet.distance).toBeGreaterThan(desktop.distance);
-    expect(mobile.distance).toBeGreaterThan(tablet.distance);
+    expect(desktop.distance).toBeGreaterThanOrEqual(DEFAULT_DISTANCE);
+    expect(tablet.distance).toBeGreaterThanOrEqual(desktop.distance);
+    expect(mobile.distance).toBeGreaterThanOrEqual(tablet.distance);
     expect(mobile.distance).toBeLessThanOrEqual(MAX_DISTANCE);
+  });
+
+  it('preserves rotation and fov while refitting startup zoom distance', () => {
+    const source = {
+      ...viewFromLatLon(41, 12, DEFAULT_DISTANCE),
+      fov: 33,
+    };
+    const responsive = getResponsiveStartupGeoView(source, 390, 844);
+
+    expect(responsive.rotation).toEqual(source.rotation);
+    expect(responsive.fov).toBe(source.fov);
+    expect(responsive.distance).toBeGreaterThan(source.distance);
+  });
+
+  it('fits the startup globe inside both viewport dimensions', () => {
+    const source = {
+      ...viewFromLatLon(37, -15, MIN_DISTANCE),
+      fov: DEFAULT_FOV,
+    };
+    const fitted = getResponsiveStartupGeoView(source, 390, 844);
+    const coverage = getGeoViewportCoverage(fitted, 390, 844);
+
+    expect(coverage.widthFraction).toBeLessThanOrEqual(0.985);
+    expect(coverage.heightFraction).toBeLessThanOrEqual(0.985);
+    expect(fitted.distance).toBeGreaterThan(source.distance);
   });
 
   it('switches control modes across the three zoom stages', () => {
@@ -99,7 +127,62 @@ describe('camera helpers', () => {
       'surface-pan',
     );
     expect(getGeoControlMode(MIN_DISTANCE)).toBe('heading-spin');
-    expect(getGeoControlMode(MIN_DISTANCE + 0.5)).toBe('surface-pan');
+    expect(
+      getGeoControlMode(MIN_DISTANCE + (DEFAULT_DISTANCE - MIN_DISTANCE) * 0.05),
+    ).toBe('heading-spin');
+    expect(
+      getGeoControlMode(MIN_DISTANCE + (DEFAULT_DISTANCE - MIN_DISTANCE) * 0.45),
+    ).toBe('surface-pan');
+  });
+
+  it('keeps the horizon transition smooth near the final zoom range', () => {
+    const nearCloseDistance =
+      DEFAULT_DISTANCE + (MIN_DISTANCE - DEFAULT_DISTANCE) * 0.9;
+    const almostMinDistance =
+      DEFAULT_DISTANCE + (MIN_DISTANCE - DEFAULT_DISTANCE) * 0.97;
+    const finalShift =
+      getGeoAnchorScreenY(MIN_DISTANCE) - getGeoAnchorScreenY(almostMinDistance);
+    const priorShift =
+      getGeoAnchorScreenY(almostMinDistance) -
+      getGeoAnchorScreenY(nearCloseDistance);
+
+    expect(getCloseZoomInfluence(almostMinDistance)).toBeGreaterThan(0.98);
+    expect(finalShift).toBeLessThan(0.02);
+    expect(finalShift).toBeLessThan(priorShift);
+  });
+
+  it('transitions continuously from satellite framing toward a tangent view while zooming', () => {
+    const samples = 24;
+    let previous = viewFromLatLon(18, 25, DEFAULT_DISTANCE);
+    let largestStepDeg = 0;
+    let firstCloseStepDeg = 0;
+
+    for (let index = 1; index <= samples; index += 1) {
+      const t = index / samples;
+      const distance = DEFAULT_DISTANCE + (MIN_DISTANCE - DEFAULT_DISTANCE) * t;
+      const next = applyHumanViewConstraint(
+        {
+          ...previous,
+          distance,
+        },
+        {
+          sourceDistance: previous.distance,
+        },
+      );
+      const delta = quaternionFromArray(previous.rotation)
+        .angleTo(quaternionFromArray(next.rotation));
+      const deltaDeg = (delta * 180) / Math.PI;
+
+      if (index === 1) {
+        firstCloseStepDeg = deltaDeg;
+      }
+
+      largestStepDeg = Math.max(largestStepDeg, deltaDeg);
+      previous = next;
+    }
+
+    expect(firstCloseStepDeg).toBeGreaterThan(0.01);
+    expect(largestStepDeg).toBeLessThan(12);
   });
 
   it('uses an off-center pinned surface ray at maximum zoom', () => {
@@ -255,7 +338,7 @@ describe('camera helpers', () => {
       effectiveFov,
     });
 
-    expect(getGeoTargetApparentScale(view)).toBeCloseTo(1.9, 6);
+    expect(getGeoTargetApparentScale(view)).toBeCloseTo(2.85, 6);
     expect(apparentScale).toBeCloseTo(getGeoTargetApparentScale(view), 6);
   });
 });

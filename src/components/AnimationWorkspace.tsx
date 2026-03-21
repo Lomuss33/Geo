@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ViewportLayoutMode } from '../app/useViewportLayout';
+import type { WorkspaceMode } from '../app/useViewportProfile';
 import {
   MOVE_COMMAND_OPTIONS,
   ROTATE_COMMAND_OPTIONS,
@@ -20,11 +20,12 @@ import type {
   AnimationTimeline as AnimationTimelineState,
   ViewerMode,
 } from '../state/viewerStore';
+import { WorkspaceIconButton } from './WorkspaceIconButton';
 
 type AnimationWorkspaceProps = {
   open: boolean;
   phase: 'idle' | 'playing';
-  layoutMode: ViewportLayoutMode;
+  workspaceMode: WorkspaceMode;
   viewerMode: ViewerMode;
   draft: AnimationTimelineState;
   playheadMs: number;
@@ -82,7 +83,7 @@ const buildGeoPoseFormState = (view: NonNullable<AnimationTimelineState['startGe
 export function AnimationWorkspace({
   open,
   phase,
-  layoutMode,
+  workspaceMode,
   viewerMode,
   draft,
   playheadMs,
@@ -129,10 +130,17 @@ export function AnimationWorkspace({
       : (draft.totalDurationMs / 1_000).toFixed(1);
   const currentGeoStartView =
     draft.startGeoView ?? getDefaultAnimationStartGeoView();
+  const enabledBlockCount = draft.blocks.filter((block) => block.enabled).length;
   const resolvedGeoPoseFormState =
     geoPoseFormState.sourceKey === getGeoPoseSourceKey(currentGeoStartView)
       ? geoPoseFormState
       : buildGeoPoseFormState(currentGeoStartView);
+  const copyIcon =
+    copyLabel === 'Copied'
+      ? 'apply'
+      : copyLabel === 'Copy failed'
+        ? 'warning'
+        : 'copy';
 
   if (!open) {
     return null;
@@ -302,21 +310,32 @@ export function AnimationWorkspace({
   return (
     <section
       aria-label="Animation workspace"
-      className={`animation-workspace animation-workspace--${layoutMode}`}
+      className={`animation-workspace animation-workspace--${workspaceMode}`}
     >
-      <div className="animation-workspace__chrome">
-        <div className="animation-workspace__hero">
-          <div>
-            <p className="panel-kicker">Animation workspace</p>
-            <h1>{viewerMode === 'geo' ? 'Geo timeline' : 'Headway timeline'}</h1>
-            <p className="animation-workspace__note">
-              Build timed motion clips against the saved start pose. The scene
-              stays locked while you author the draft.
-            </p>
-          </div>
+      <div
+        className={`animation-workspace__frame animation-workspace__frame--${workspaceMode}`}
+      >
+        <div className="animation-workspace__chrome">
+          <div className="animation-workspace__toolbar">
+            <div className="animation-workspace__toolbar-title">
+              <p className="panel-kicker">Animation workspace</p>
+              <h1>
+                {viewerMode === 'geo' ? 'Geo timeline' : 'Headway timeline'}
+              </h1>
+            </div>
 
-          <div className="animation-workspace__transport">
-            <label className="field">
+            <div className="animation-workspace__toolbar-meta">
+              <div className="animation-summary__meta">
+                <strong>{draft.blocks.length}</strong>
+                <small>{draft.blocks.length === 1 ? 'clip' : 'clips'}</small>
+              </div>
+              <div className="animation-summary__meta">
+                <strong>{enabledBlockCount}</strong>
+                <small>enabled</small>
+              </div>
+            </div>
+
+            <label className="field animation-workspace__duration-field">
               <span>Total duration</span>
               <input
                 min="0.1"
@@ -338,262 +357,257 @@ export function AnimationWorkspace({
                 value={durationInput}
               />
             </label>
+
             <div className="animation-workspace__transport-status">
               <strong>{formatSeconds(playheadMs)}s</strong>
               <small>playhead</small>
             </div>
-            <button
-              className="primary-button"
-              disabled={!canPlay}
-              onClick={onPlay}
-              type="button"
-            >
-              Play from playhead
-            </button>
-            <button className="secondary-button" onClick={onClose} type="button">
-              Return to viewer
-            </button>
+
+            <div className="animation-workspace__toolbar-actions">
+              <WorkspaceIconButton
+                disabled={!canPlay}
+                icon="play"
+                label="Play from playhead"
+                onClick={onPlay}
+              />
+              <WorkspaceIconButton
+                icon="back"
+                label="Return to viewer"
+                onClick={onClose}
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="animation-workspace__locked-banner" role="note">
-          <p className="panel-kicker">Locked viewport</p>
-          <p>
-            Camera controls are disabled while the editor is open. The start
-            pose fields define the base camera, and every clip is applied on top
-            of that pose at the current playhead.
-          </p>
-        </div>
+          <details className="animation-workspace__helper">
+            <summary>Locked start pose</summary>
+            <p>
+              Camera controls stay disabled while the editor is open. The saved
+              start pose becomes the base camera and every clip is evaluated
+              from that pose when playback begins.
+            </p>
+          </details>
 
-        {viewerMode === 'geo' ? (
-          <div className="animation-workspace__start-pose">
-            <div className="hud-card__header">
-              <div>
-                <p className="panel-kicker">Start pose</p>
-                <h2>Base camera</h2>
+          {viewerMode === 'geo' ? (
+            <div className="animation-workspace__start-pose">
+              <div className="hud-card__header">
+                <div>
+                  <p className="panel-kicker">Start pose</p>
+                  <h2>Base camera</h2>
+                </div>
+                <small>Default: Europe / Africa</small>
               </div>
-              <small>Default: Europe / Africa</small>
+
+              <div className="animation-workspace__start-pose-grid">
+                <label className="field">
+                  <span>Latitude</span>
+                  <input
+                    onChange={(event) =>
+                      updateGeoPoseFormState({ latitude: event.target.value })
+                    }
+                    step="0.1"
+                    type="number"
+                    value={resolvedGeoPoseFormState.latitude}
+                  />
+                </label>
+                <label className="field">
+                  <span>Longitude</span>
+                  <input
+                    onChange={(event) =>
+                      updateGeoPoseFormState({ longitude: event.target.value })
+                    }
+                    step="0.1"
+                    type="number"
+                    value={resolvedGeoPoseFormState.longitude}
+                  />
+                </label>
+                <label className="field">
+                  <span>Distance</span>
+                  <input
+                    onChange={(event) =>
+                      updateGeoPoseFormState({ distance: event.target.value })
+                    }
+                    step="0.01"
+                    type="number"
+                    value={resolvedGeoPoseFormState.distance}
+                  />
+                </label>
+                <label className="field">
+                  <span>Roll</span>
+                  <input
+                    onChange={(event) =>
+                      updateGeoPoseFormState({ roll: event.target.value })
+                    }
+                    step="0.1"
+                    type="number"
+                    value={resolvedGeoPoseFormState.roll}
+                  />
+                </label>
+                <label className="field">
+                  <span>FOV</span>
+                  <input
+                    onChange={(event) =>
+                      updateGeoPoseFormState({ fov: event.target.value })
+                    }
+                    step="0.1"
+                    type="number"
+                    value={resolvedGeoPoseFormState.fov}
+                  />
+                </label>
+
+                <div className="animation-workspace__start-pose-actions">
+                  <WorkspaceIconButton
+                    icon="apply"
+                    label="Apply start pose"
+                    onClick={handleApplyGeoStartPose}
+                  />
+                  <WorkspaceIconButton
+                    icon="reset"
+                    label="Reset to Europe / Africa"
+                    onClick={handleResetGeoStartPose}
+                  />
+                </div>
+              </div>
+
+              {geoPoseError ? (
+                <p className="animation-workspace__error">{geoPoseError}</p>
+              ) : (
+                <p className="animation-workspace__pose-note">
+                  Use the saved base camera instead of the live viewer state.
+                  Clip motion is evaluated from this pose every time playback
+                  starts.
+                </p>
+              )}
             </div>
+          ) : null}
 
-            <div className="animation-workspace__start-pose-grid">
-              <label className="field">
-                <span>Latitude</span>
-                <input
-                  onChange={(event) =>
-                    updateGeoPoseFormState({ latitude: event.target.value })
-                  }
-                  step="0.1"
-                  type="number"
-                  value={resolvedGeoPoseFormState.latitude}
-                />
-              </label>
-              <label className="field">
-                <span>Longitude</span>
-                <input
-                  onChange={(event) =>
-                    updateGeoPoseFormState({ longitude: event.target.value })
-                  }
-                  step="0.1"
-                  type="number"
-                  value={resolvedGeoPoseFormState.longitude}
-                />
-              </label>
-              <label className="field">
-                <span>Distance</span>
-                <input
-                  onChange={(event) =>
-                    updateGeoPoseFormState({ distance: event.target.value })
-                  }
-                  step="0.01"
-                  type="number"
-                  value={resolvedGeoPoseFormState.distance}
-                />
-              </label>
-              <label className="field">
-                <span>Roll</span>
-                <input
-                  onChange={(event) =>
-                    updateGeoPoseFormState({ roll: event.target.value })
-                  }
-                  step="0.1"
-                  type="number"
-                  value={resolvedGeoPoseFormState.roll}
-                />
-              </label>
-              <label className="field">
-                <span>FOV</span>
-                <input
-                  onChange={(event) =>
-                    updateGeoPoseFormState({ fov: event.target.value })
-                  }
-                  step="0.1"
-                  type="number"
-                  value={resolvedGeoPoseFormState.fov}
-                />
-              </label>
-            </div>
+          {durationError ? (
+            <p className="animation-workspace__error">{durationError}</p>
+          ) : null}
 
-            {geoPoseError ? (
-              <p className="animation-workspace__error">{geoPoseError}</p>
-            ) : (
-              <p className="animation-workspace__pose-note">
-                Use the saved base camera instead of the live viewer state. Clip
-                motion is evaluated from this pose every time playback starts.
-              </p>
-            )}
-
-            <div className="button-row">
-              <button
-                className="secondary-button"
-                onClick={handleApplyGeoStartPose}
-                type="button"
+          <div className="animation-workspace__command-groups">
+            <div className="animation-workspace__command-group">
+              <div className="hud-card__header">
+                <strong>Move</strong>
+                <small>Insert at playhead</small>
+              </div>
+              <div
+                className="animation-command-strip"
+                role="group"
+                aria-label="Move commands"
               >
-                Apply start pose
-              </button>
-              <button
-                className="secondary-button"
-                onClick={handleResetGeoStartPose}
-                type="button"
+                {MOVE_COMMAND_OPTIONS.map((option) => (
+                  <button
+                    className="trim-pad__button"
+                    key={option.command}
+                    onClick={() => handleInsertCommand(option.command)}
+                    type="button"
+                  >
+                    <span>{option.shortLabel}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="animation-workspace__command-group">
+              <div className="hud-card__header">
+                <strong>Rotate</strong>
+                <small>Insert at playhead</small>
+              </div>
+              <div
+                className="animation-command-strip"
+                role="group"
+                aria-label="Rotate commands"
               >
-                Reset to Europe / Africa
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {durationError ? (
-          <p className="animation-workspace__error">{durationError}</p>
-        ) : null}
-
-        <div className="animation-workspace__command-groups">
-          <div className="animation-workspace__command-group">
-            <div className="hud-card__header">
-              <strong>Move</strong>
-              <small>Insert at playhead</small>
-            </div>
-            <div className="animation-command-grid" role="group" aria-label="Move commands">
-              {MOVE_COMMAND_OPTIONS.map((option) => (
-                <button
-                  className="trim-pad__button"
-                  key={option.command}
-                  onClick={() => handleInsertCommand(option.command)}
-                  type="button"
-                >
-                  <span>{option.shortLabel}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="animation-workspace__command-group">
-            <div className="hud-card__header">
-              <strong>Rotate</strong>
-              <small>Insert at playhead</small>
-            </div>
-            <div className="animation-command-grid" role="group" aria-label="Rotate commands">
-              {ROTATE_COMMAND_OPTIONS(viewerMode).map((option) => (
-                <button
-                  className="trim-pad__button"
-                  key={option.command}
-                  onClick={() => handleInsertCommand(option.command)}
-                  type="button"
-                >
-                  <span>{option.shortLabel}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="animation-workspace__summary">
-            <div className="animation-summary__meta">
-              <strong>{draft.blocks.length}</strong>
-              <small>{draft.blocks.length === 1 ? 'clip' : 'clips'}</small>
-            </div>
-            <div className="animation-summary__meta">
-              <strong>
-                {
-                  draft.blocks.filter((block) => block.enabled).length
-                }
-              </strong>
-              <small>enabled</small>
+                {ROTATE_COMMAND_OPTIONS(viewerMode).map((option) => (
+                  <button
+                    className="trim-pad__button"
+                    key={option.command}
+                    onClick={() => handleInsertCommand(option.command)}
+                    type="button"
+                  >
+                    <span>{option.shortLabel}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="animation-workspace__body">
-        <AnimationTimeline
-          draft={draft}
-          onPlayheadChange={onPlayheadChange}
-          onSelectBlock={setSelectedBlockId}
-          onUpdateBlockTiming={(blockId, nextTiming) =>
-            updateBlock(blockId, nextTiming)
-          }
-          playheadMs={playheadMs}
-          selectedBlockId={resolvedSelectedBlockId}
-          viewerMode={viewerMode}
-        />
+        <div className="animation-workspace__body">
+          <AnimationTimeline
+            draft={draft}
+            onPlayheadChange={onPlayheadChange}
+            onSelectBlock={setSelectedBlockId}
+            onUpdateBlockTiming={(blockId, nextTiming) =>
+              updateBlock(blockId, nextTiming)
+            }
+            playheadMs={playheadMs}
+            selectedBlockId={resolvedSelectedBlockId}
+            viewerMode={viewerMode}
+          />
 
-        <AnimationInspector
-          onDeleteBlock={handleDeleteBlock}
-          onUpdateBlock={(blockId, next) => updateBlock(blockId, next)}
-          selectedBlock={selectedBlock}
-          totalDurationMs={draft.totalDurationMs}
-          viewerMode={viewerMode}
-        />
-      </div>
-
-      <details className="animation-workspace__advanced">
-        <summary>Import / Export</summary>
-        <div className="animation-workspace__advanced-body">
-          <label className="field">
-            <span>Hex timeline</span>
-            <textarea
-              className="animation-workspace__hex"
-              onChange={(event) => onImportHexChange(event.target.value)}
-              value={importHex}
-            />
-            {importError ? (
-              <small className="animation-workspace__error">{importError}</small>
-            ) : (
-              <small>
-                Copy the current draft as hex or paste a saved timeline to load
-                it.
-              </small>
-            )}
-          </label>
-
-          <div className="button-row">
-            <button className="secondary-button" onClick={handleCopyHex} type="button">
-              {copyLabel}
-            </button>
-            <button
-              className="secondary-button"
-              onClick={onImportHexLoad}
-              type="button"
-            >
-              Load hex
-            </button>
-            <button
-              className="secondary-button"
-              onClick={() => {
-                onClearDraft();
-                setSelectedBlockId(null);
-                setLastAmountByCommand({});
-                setDurationInputState({
-                  sourceMs: draft.totalDurationMs,
-                  value: (draft.totalDurationMs / 1_000).toFixed(1),
-                });
-                setDurationError(null);
-                setGeoPoseError(null);
-              }}
-              type="button"
-            >
-              Clear draft
-            </button>
-          </div>
+          <AnimationInspector
+            onDeleteBlock={handleDeleteBlock}
+            onUpdateBlock={(blockId, next) => updateBlock(blockId, next)}
+            selectedBlock={selectedBlock}
+            totalDurationMs={draft.totalDurationMs}
+            viewerMode={viewerMode}
+          />
         </div>
-      </details>
+
+        <details className="animation-workspace__advanced">
+          <summary>Import / Export</summary>
+          <div className="animation-workspace__advanced-body">
+            <label className="field">
+              <span>Hex timeline</span>
+              <textarea
+                className="animation-workspace__hex"
+                onChange={(event) => onImportHexChange(event.target.value)}
+                value={importHex}
+              />
+              {importError ? (
+                <small className="animation-workspace__error">
+                  {importError}
+                </small>
+              ) : (
+                <small>
+                  Copy the current draft as hex or paste a saved timeline to
+                  load it.
+                </small>
+              )}
+            </label>
+
+            <div className="animation-workspace__toolbar-actions animation-workspace__advanced-actions">
+              <WorkspaceIconButton
+                icon={copyIcon}
+                label="Copy hex"
+                onClick={handleCopyHex}
+                title={copyLabel}
+              />
+              <WorkspaceIconButton
+                icon="load"
+                label="Load hex"
+                onClick={onImportHexLoad}
+              />
+              <WorkspaceIconButton
+                icon="clear"
+                label="Clear draft"
+                onClick={() => {
+                  onClearDraft();
+                  setSelectedBlockId(null);
+                  setLastAmountByCommand({});
+                  setDurationInputState({
+                    sourceMs: draft.totalDurationMs,
+                    value: (draft.totalDurationMs / 1_000).toFixed(1),
+                  });
+                  setDurationError(null);
+                  setGeoPoseError(null);
+                }}
+              />
+            </div>
+          </div>
+        </details>
+      </div>
     </section>
   );
 }

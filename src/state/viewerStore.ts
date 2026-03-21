@@ -41,6 +41,20 @@ export type HudTelemetry = {
 
 export type QualityMode = 'performance' | 'balanced' | 'high';
 export type AxisLockMode = 'free' | 'axis-lock';
+export type HeadwayLayoutLook =
+  | 'mission'
+  | 'daylight'
+  | 'atlas'
+  | 'blueprint'
+  | 'mono'
+  | 'transit';
+export type HeadwayLayerKey =
+  | 'roads'
+  | 'parks'
+  | 'buildings'
+  | 'placeLabels'
+  | 'pois';
+export type HeadwayLayerVisibility = Record<HeadwayLayerKey, boolean>;
 export type RotationAxis = 'x' | 'y' | null;
 export type CompareModeState = 'off' | 'armed' | 'pinned';
 export type SelectedCountry = {
@@ -141,6 +155,14 @@ const DEFAULT_ANIMATION_SESSION: AnimationSessionState = {
   previewHeadwayView: null,
 };
 
+const DEFAULT_HEADWAY_LAYER_VISIBILITY: HeadwayLayerVisibility = {
+  roads: true,
+  parks: true,
+  buildings: true,
+  placeLabels: true,
+  pois: true,
+};
+
 const cloneAnimationTimeline = (
   timeline: AnimationTimeline,
 ): AnimationTimeline => ({
@@ -192,6 +214,8 @@ type ViewerStore = {
   headwayRenderState: HeadwayRenderState;
   headwayErrorMessage: string | null;
   quality: QualityMode;
+  headwayLayoutLook: HeadwayLayoutLook;
+  headwayLayerVisibility: HeadwayLayerVisibility;
   axisLockMode: AxisLockMode;
   compareModeState: CompareModeState;
   selectedCountry: SelectedCountry | null;
@@ -221,6 +245,8 @@ type ViewerStore = {
   setHeadwayRenderState: (state: HeadwayRenderState) => void;
   setHeadwayErrorMessage: (message: string | null) => void;
   setQuality: (quality: QualityMode) => void;
+  setHeadwayLayoutLook: (look: HeadwayLayoutLook) => void;
+  setHeadwayLayerVisibility: (visibility: Partial<HeadwayLayerVisibility>) => void;
   setAxisLockMode: (mode: AxisLockMode) => void;
   toggleAxisLock: () => void;
   setCompareModeState: (state: CompareModeState) => void;
@@ -294,6 +320,8 @@ export const useViewerStore = create<ViewerStore>((set) => ({
   headwayRenderState: 'idle',
   headwayErrorMessage: null,
   quality: 'balanced',
+  headwayLayoutLook: 'mission',
+  headwayLayerVisibility: { ...DEFAULT_HEADWAY_LAYER_VISIBILITY },
   axisLockMode: 'free',
   compareModeState: 'off',
   selectedCountry: null,
@@ -326,6 +354,14 @@ export const useViewerStore = create<ViewerStore>((set) => ({
   setHeadwayRenderState: (headwayRenderState) => set({ headwayRenderState }),
   setHeadwayErrorMessage: (headwayErrorMessage) => set({ headwayErrorMessage }),
   setQuality: (quality) => set({ quality }),
+  setHeadwayLayoutLook: (headwayLayoutLook) => set({ headwayLayoutLook }),
+  setHeadwayLayerVisibility: (visibility) =>
+    set((state) => ({
+      headwayLayerVisibility: {
+        ...state.headwayLayerVisibility,
+        ...visibility,
+      },
+    })),
   setAxisLockMode: (axisLockMode) => set({ axisLockMode, activeAxis: null }),
   toggleAxisLock: () =>
     set((state) => ({

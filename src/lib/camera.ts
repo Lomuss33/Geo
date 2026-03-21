@@ -1,4 +1,4 @@
-import { Quaternion, Vector3 } from 'three';
+import { PerspectiveCamera, Quaternion, Vector3 } from 'three';
 import {
   DEFAULT_FOV,
   DEFAULT_DISTANCE,
@@ -48,14 +48,15 @@ type HumanViewConstraintInput = {
   headingDeg?: number;
 };
 
-const ANCHOR_SHIFT_POWER = 3;
+const ANCHOR_SHIFT_POWER = 1.6;
 export const GEO_OVERVIEW_ENTER_THRESHOLD = 0.35;
 export const GEO_OVERVIEW_EXIT_THRESHOLD = 0.2;
 const HEADING_SPIN_THRESHOLD = 0.9;
-const MAX_ANCHOR_SCREEN_Y = 0.95;
-const FINAL_APPARENT_SCALE = 1.9;
+const MAX_ANCHOR_SCREEN_Y = 0.88;
+const FINAL_APPARENT_SCALE = 2.85;
 const APPARENT_SCALE_POWER = 1.35;
 const MAX_NATURAL_EFFECTIVE_FOV = 42;
+const OVERVIEW_ANCHOR_EPSILON = 1e-4;
 
 const HUMAN_RIG_HEIGHT = 1.58;
 const HUMAN_RIG_FORWARD = 0.1;
@@ -69,6 +70,8 @@ const DEFAULT_SURFACE_LAT_DEG = 18;
 
 const WORLD_UP = new Vector3(0, 1, 0);
 const FALLBACK_EAST = new Vector3(0, 0, -1);
+const STARTUP_VIEWPORT_FIT_MARGIN = 0.985;
+const VISUAL_GLOBE_RADIUS = 1.34;
 
 const smoothstep = (value: number) => value * value * (3 - 2 * value);
 
@@ -316,6 +319,16 @@ export const getGeoApparentScale = ({
   Math.tan(getGeoAngularRadius(distance)) /
   Math.tan(getRadiansFromDegrees(clamp(effectiveFov, 1, 179)) / 2);
 
+export const getGeoProjectedSphereRadiusPx = (
+  view: GeoAnchorView,
+  viewportHeight: number,
+) =>
+  getGeoApparentScale({
+    distance: clamp(view.distance, MIN_DISTANCE, MAX_DISTANCE),
+    effectiveFov: getGeoEffectiveFov(view),
+  }) *
+  (viewportHeight / 2);
+
 const getGeoBaseApparentScale = (baseFov: number) =>
   getGeoApparentScale({
     distance: DEFAULT_DISTANCE,
@@ -364,6 +377,101 @@ export const solveGeoEffectiveFov = (view: GeoAnchorView) => {
 export const getGeoEffectiveFov = (view: GeoAnchorView) =>
   solveGeoEffectiveFov(view);
 
+const getSilhouetteBasis = (axis: Vector3) => {
+  const tangent = new Vector3().crossVectors(WORLD_UP, axis);
+
+  if (tangent.lengthSq() <= 1e-6) {
+    tangent.copy(FALLBACK_EAST).projectOnPlane(axis);
+  }
+
+  tangent.normalize();
+
+  return {
+    tangent,
+    bitangent: new Vector3().crossVectors(axis, tangent).normalize(),
+  };
+};
+
+export const getGeoViewportCoverage = (
+  view: GeoAnchorView,
+  viewportWidth: number,
+  viewportHeight: number,
+) => {
+  if (viewportWidth <= 0 || viewportHeight <= 0) {
+    return {
+      widthFraction: 0,
+      heightFraction: 0,
+    };
+  }
+
+  const { position, target, effectiveFov } = getGeoCameraPose({
+    rotation: [0, 0, 0, 1],
+    distance: view.distance,
+    fov: view.fov,
+  });
+  const camera = new PerspectiveCamera(
+    effectiveFov,
+    viewportWidth / viewportHeight,
+    0.01,
+    1000,
+  );
+
+  camera.position.set(position[0], position[1], position[2]);
+  camera.up.copy(WORLD_UP);
+  camera.lookAt(target[0], target[1], target[2]);
+  camera.updateMatrixWorld(true);
+  camera.updateProjectionMatrix();
+
+  const cameraOffset = camera.position.clone();
+  const centerDistance = cameraOffset.length();
+
+  if (centerDistance <= VISUAL_GLOBE_RADIUS) {
+    return {
+      widthFraction: 1,
+      heightFraction: 1,
+    };
+  }
+
+  const centerToCamera = cameraOffset.clone().normalize();
+  const circleCenter = centerToCamera
+    .clone()
+    .multiplyScalar(
+      (VISUAL_GLOBE_RADIUS * VISUAL_GLOBE_RADIUS) / centerDistance,
+    );
+  const circleRadius = Math.sqrt(
+    Math.max(
+      0,
+      VISUAL_GLOBE_RADIUS * VISUAL_GLOBE_RADIUS -
+        (VISUAL_GLOBE_RADIUS ** 4) / (centerDistance * centerDistance),
+    ),
+  );
+  const { tangent, bitangent } = getSilhouetteBasis(centerToCamera);
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (let step = 0; step < 96; step += 1) {
+    const theta = (step / 96) * Math.PI * 2;
+    const sample = circleCenter
+      .clone()
+      .addScaledVector(tangent, Math.cos(theta) * circleRadius)
+      .addScaledVector(bitangent, Math.sin(theta) * circleRadius)
+      .project(camera);
+
+    minX = Math.min(minX, sample.x);
+    maxX = Math.max(maxX, sample.x);
+    minY = Math.min(minY, sample.y);
+    maxY = Math.max(maxY, sample.y);
+  }
+
+  return {
+    widthFraction: (maxX - minX) / 2,
+    heightFraction: (maxY - minY) / 2,
+  };
+};
+
 export const getResponsiveStartupGeoView = (
   view: GlobeViewState,
   viewportWidth: number,
@@ -372,32 +480,58 @@ export const getResponsiveStartupGeoView = (
   if (viewportWidth <= 0 || viewportHeight <= 0) {
     return view;
   }
-
-  const aspect = viewportWidth / viewportHeight;
-  const referenceAspect = 16 / 9;
-  const effectiveFovRadians =
-    (getGeoEffectiveFov({
-      distance: view.distance,
-      fov: view.fov,
-    }) *
-      Math.PI) /
-    180;
-  const referenceHorizontalFov =
-    2 * Math.atan(Math.tan(effectiveFovRadians / 2) * referenceAspect);
-  const currentHorizontalFov =
-    2 * Math.atan(Math.tan(effectiveFovRadians / 2) * aspect);
   const clampedDistance = clamp(view.distance, MIN_DISTANCE, MAX_DISTANCE);
-  const angularRadius = Math.asin(1 / clampedDistance);
-  const targetAngularRadius =
-    angularRadius * (currentHorizontalFov / referenceHorizontalFov);
-  const nextDistance = clamp(
-    1 / Math.sin(Math.max(targetAngularRadius, 1e-3)),
-    clampedDistance,
-    MAX_DISTANCE,
-  );
+
+  const fitsViewport = (distance: number) => {
+    const coverage = getGeoViewportCoverage(
+      {
+        distance,
+        fov: view.fov,
+      },
+      viewportWidth,
+      viewportHeight,
+    );
+
+    return (
+      coverage.widthFraction <= STARTUP_VIEWPORT_FIT_MARGIN &&
+      coverage.heightFraction <= STARTUP_VIEWPORT_FIT_MARGIN
+    );
+  };
+
+  if (fitsViewport(clampedDistance)) {
+    return {
+      ...view,
+      distance: clampedDistance,
+    };
+  }
+
+  if (!fitsViewport(MAX_DISTANCE)) {
+    return {
+      ...view,
+      distance: MAX_DISTANCE,
+    };
+  }
+
+  let low = clampedDistance;
+  let high = MAX_DISTANCE;
+
+  for (let iteration = 0; iteration < 20; iteration += 1) {
+    const mid = (low + high) / 2;
+
+    if (fitsViewport(mid)) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+
+  const nextDistance = high;
 
   if (Math.abs(nextDistance - clampedDistance) < 1e-3) {
-    return view;
+    return {
+      ...view,
+      distance: clampedDistance,
+    };
   }
 
   return {
@@ -653,7 +787,7 @@ export const applyHumanViewConstraint = (
   let anchor = resolvedInput.anchor ?? null;
   let headingDeg = resolvedInput.headingDeg ?? 0;
 
-  if (!anchor && influence >= GEO_OVERVIEW_ENTER_THRESHOLD) {
+  if (!anchor && influence > OVERVIEW_ANCHOR_EPSILON) {
     const fallbackView = {
       ...view,
       distance,

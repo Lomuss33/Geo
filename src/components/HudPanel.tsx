@@ -67,11 +67,11 @@ export function HudPanel({
             </span>
           ) : null}
           {compareModeState === 'armed' ? (
-            <span className="status-pill status-pill--axis">Pick a country</span>
+            <span className="status-pill status-pill--axis">Compare armed</span>
           ) : null}
           {compareModeState === 'pinned' && selectedCountry ? (
             <span className="status-pill status-pill--axis">
-              Comparing: {selectedCountry.name}
+              Pinned: {selectedCountry.name}
             </span>
           ) : null}
           {isFrozen ? (

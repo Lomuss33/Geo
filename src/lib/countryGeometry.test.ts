@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildCountryFrontProjection,
   findCountryByLatLon,
   getAllCountries,
+  getCountryById,
 } from './countryGeometry';
 
 describe('countryGeometry', () => {
@@ -20,23 +20,11 @@ describe('countryGeometry', () => {
     expect(country?.name).toBe('Brazil');
   });
 
-  it('builds deterministic front projections that scale with zoom', () => {
+  it('can look up a loaded country by id', () => {
     const brazil = getAllCountries().find((country) => country.name === 'Brazil');
 
     expect(brazil).toBeTruthy();
-
-    const coarse = buildCountryFrontProjection(brazil!, {
-      widthPx: 400,
-      heightPx: 400,
-      zoomFactor: 90,
-    });
-    const close = buildCountryFrontProjection(brazil!, {
-      widthPx: 400,
-      heightPx: 400,
-      zoomFactor: 180,
-    });
-
-    expect(coarse).toContain('M');
-    expect(close).not.toBe(coarse);
+    expect(getCountryById(brazil!.id)?.name).toBe('Brazil');
+    expect(getCountryById('missing-country-id')).toBeNull();
   });
 });

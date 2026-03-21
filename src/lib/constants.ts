@@ -25,12 +25,17 @@ const quaternionFromLatLon = (lat: number, lon: number) =>
 export const LOCAL_SUN_DIRECTION = latLonToVector(18, -22).normalize();
 export const DEFAULT_FOV = 28;
 export const DEFAULT_DISTANCE = 3.15;
-export const MIN_DISTANCE = 0.78;
-export const MAX_DISTANCE = 6.2;
+export const MIN_DISTANCE = 0.28;
+export const MAX_DISTANCE = 12;
+export const COMPARE_MIN_DISTANCE = 0.95;
+export const COMPARE_MAX_DISTANCE = 2.8;
+export const COMPARE_ZOOM_STEP = 0.0004;
 export const STORAGE_KEYS = {
   onboarding: 'geo:onboarding-dismissed',
   quality: 'geo:quality-mode',
   rotationMode: 'geo:rotation-mode',
+  headwayLayoutLook: 'geo:headway-layout-look',
+  headwayLayerVisibility: 'geo:headway-layer-visibility',
   animationDraftGeo: 'geo:animation-draft:geo',
   animationDraftHeadway: 'geo:animation-draft:headway',
 } as const;

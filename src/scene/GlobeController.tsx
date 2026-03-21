@@ -11,6 +11,9 @@ import {
 import type { Group } from 'three';
 import { findCountryByLatLon } from '../lib/countryGeometry';
 import {
+  COMPARE_MAX_DISTANCE,
+  COMPARE_MIN_DISTANCE,
+  COMPARE_ZOOM_STEP,
   DEFAULT_VIEW,
   FRONT_VECTOR,
   LOCAL_SUN_DIRECTION,
@@ -43,10 +46,10 @@ import {
   deriveGeoOverviewHeading,
   deriveSurfaceAnchor,
   GEO_OVERVIEW_ENTER_THRESHOLD,
-  GEO_OVERVIEW_EXIT_THRESHOLD,
   getCloseZoomInfluence,
   getGeoCameraPose,
   getGeoControlMode,
+  getResponsiveStartupGeoView,
   moveGeoOverviewAnchor,
   stepGeoOverviewHeading,
   surfaceAnchoredGeoView,
@@ -136,6 +139,7 @@ export function GlobeController({
   const targetView = useViewerStore((state) => state.targetView);
   const quality = useViewerStore((state) => state.quality);
   const axisLockMode = useViewerStore((state) => state.axisLockMode);
+  const hasInteracted = useViewerStore((state) => state.hasInteracted);
   const setGeoOverviewAnchor = useViewerStore(
     (state) => state.setGeoOverviewAnchor,
   );
@@ -171,12 +175,12 @@ export function GlobeController({
       let anchor = useViewerStore.getState().geoOverviewAnchor;
       let headingDeg = useViewerStore.getState().geoOverviewHeadingDeg;
 
-      if (!anchor && influence >= GEO_OVERVIEW_ENTER_THRESHOLD) {
+      if (!anchor && influence > 1e-4) {
         anchor = deriveGeoCenteredAnchor(view);
         headingDeg = deriveGeoOverviewHeading(view, anchor);
         setGeoOverviewAnchor(anchor);
         setGeoOverviewHeading(headingDeg);
-      } else if (anchor && influence <= GEO_OVERVIEW_EXIT_THRESHOLD) {
+      } else if (anchor && influence <= 1e-4) {
         clearGeoOverviewState();
         anchor = null;
         headingDeg = 0;
@@ -223,6 +227,56 @@ export function GlobeController({
     targetViewRef.current = applyStoredOverviewConstraint(cloneView(targetView));
   }, [targetView]);
 
+  useEffect(() => {
+    if (hasInteracted || isAnimationSessionActive) {
+      return;
+    }
+
+    const fitCurrentViewToCanvas = () => {
+      const rect = gl.domElement.getBoundingClientRect();
+
+      if (rect.width <= 0 || rect.height <= 0) {
+        return;
+      }
+
+      const fittedView = getResponsiveStartupGeoView(
+        currentViewRef.current,
+        rect.width,
+        rect.height,
+      );
+
+      if (Math.abs(fittedView.distance - currentViewRef.current.distance) < 1e-3) {
+        return;
+      }
+
+      currentViewRef.current = cloneView(fittedView);
+      targetViewRef.current = cloneView(fittedView);
+      applyImmediateView(fittedView);
+
+      const encoded = serializeViewState(fittedView);
+      if (encoded !== lastSerializedRef.current) {
+        if (liveSyncViewUrl) {
+          updateUrlWithView(fittedView);
+        }
+        lastSerializedRef.current = encoded;
+      }
+    };
+
+    const frame = window.requestAnimationFrame(fitCurrentViewToCanvas);
+    window.addEventListener('resize', fitCurrentViewToCanvas);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', fitCurrentViewToCanvas);
+    };
+  }, [
+    applyImmediateView,
+    gl.domElement,
+    hasInteracted,
+    isAnimationSessionActive,
+    liveSyncViewUrl,
+  ]);
+
   const getViewportRect = useEffectEvent(() =>
     gl.domElement.getBoundingClientRect(),
   );
@@ -243,7 +297,13 @@ export function GlobeController({
         return null;
       }
 
-      return intersected.clone().normalize();
+      const localHitPoint = intersected.clone();
+
+      if (globeGroup.current) {
+        globeGroup.current.worldToLocal(localHitPoint);
+      }
+
+      return localHitPoint.normalize();
     },
   );
 
@@ -622,10 +682,13 @@ export function GlobeController({
 
       event.preventDefault();
       markInteracted();
+      const compareZoomActive = compareModeState !== 'off';
       const distance = clamp(
-        currentViewRef.current.distance + event.deltaY * 0.00125,
-        MIN_DISTANCE,
-        MAX_DISTANCE,
+        currentViewRef.current.distance +
+          event.deltaY *
+            (compareZoomActive ? COMPARE_ZOOM_STEP : 0.00125),
+        compareZoomActive ? COMPARE_MIN_DISTANCE : MIN_DISTANCE,
+        compareZoomActive ? COMPARE_MAX_DISTANCE : MAX_DISTANCE,
       );
       setImmediateQuaternion(
         quaternionFromArray(currentViewRef.current.rotation),

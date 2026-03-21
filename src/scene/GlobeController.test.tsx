@@ -3,7 +3,12 @@ import { fireEvent, render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Group, PerspectiveCamera, Ray, Vector3 } from 'three';
 import { findCountryByLatLon } from '../lib/countryGeometry';
-import { DEFAULT_VIEW } from '../lib/constants';
+import {
+  COMPARE_MAX_DISTANCE,
+  COMPARE_MIN_DISTANCE,
+  DEFAULT_VIEW,
+} from '../lib/constants';
+import { vector3ToLatLon } from '../lib/geo';
 import { cloneView } from '../lib/math';
 import { useViewerStore } from '../state/viewerStore';
 import { GlobeController } from './GlobeController';
@@ -114,6 +119,50 @@ describe('GlobeController', () => {
     );
 
     expect(canvasElement.style.cursor).toBe('');
+  });
+
+  it('limits compare zoom-out to the compare-specific maximum distance', () => {
+    useViewerStore.setState({
+      view: {
+        ...cloneView(DEFAULT_VIEW),
+        distance: COMPARE_MAX_DISTANCE + 2,
+      },
+      targetView: {
+        ...cloneView(DEFAULT_VIEW),
+        distance: COMPARE_MAX_DISTANCE + 2,
+      },
+    });
+
+    renderController({ compareModeState: 'armed' });
+
+    fireEvent.wheel(canvasElement, { deltaY: 120 });
+
+    expect(useViewerStore.getState().view.distance).toBeCloseTo(
+      COMPARE_MAX_DISTANCE,
+      6,
+    );
+  });
+
+  it('limits compare zoom-in to the compare-specific minimum distance', () => {
+    useViewerStore.setState({
+      view: {
+        ...cloneView(DEFAULT_VIEW),
+        distance: COMPARE_MIN_DISTANCE - 0.08,
+      },
+      targetView: {
+        ...cloneView(DEFAULT_VIEW),
+        distance: COMPARE_MIN_DISTANCE - 0.08,
+      },
+    });
+
+    renderController({ compareModeState: 'pinned' });
+
+    fireEvent.wheel(canvasElement, { deltaY: -120 });
+
+    expect(useViewerStore.getState().view.distance).toBeCloseTo(
+      COMPARE_MIN_DISTANCE,
+      6,
+    );
   });
 
   it('picks a visible country on click without dragging', () => {
@@ -260,6 +309,57 @@ describe('GlobeController', () => {
     });
 
     expect(onCountryPick).not.toHaveBeenCalled();
+
+    intersectSpy.mockRestore();
+  });
+
+  it('projects compare picks into the globe local space before resolving the country', () => {
+    const onCountryPick = vi.fn();
+    const intersectSpy = vi
+      .spyOn(Ray.prototype, 'intersectSphere')
+      .mockImplementation((_sphere, target) =>
+        target.copy(new Vector3(0, 0, 1)),
+      );
+    const globeGroup = new Group();
+
+    globeGroup.rotation.y = Math.PI / 2;
+    globeGroup.updateMatrixWorld(true);
+
+    findCountryByLatLonMock.mockReturnValue({
+      id: '999',
+      name: 'Rotated test country',
+      centroid: [10, 20],
+      rings: [],
+      polygons: [],
+    });
+
+    renderController({
+      globeGroup: { current: globeGroup },
+      onCountryPick,
+    });
+
+    fireEvent.pointerDown(canvasElement, {
+      button: 0,
+      clientX: 120,
+      clientY: 120,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(canvasElement, {
+      button: 0,
+      clientX: 120,
+      clientY: 120,
+      pointerId: 1,
+    });
+
+    const localHitPoint = globeGroup.worldToLocal(new Vector3(0, 0, 1));
+    const { lat, lon } = vector3ToLatLon(localHitPoint.normalize());
+
+    expect(findCountryByLatLonMock).toHaveBeenCalledWith(lon, lat);
+    expect(onCountryPick).toHaveBeenCalledWith({
+      id: '999',
+      name: 'Rotated test country',
+      centroid: [10, 20],
+    });
 
     intersectSpy.mockRestore();
   });

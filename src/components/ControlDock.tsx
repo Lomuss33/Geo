@@ -1,25 +1,35 @@
-import { useEffect, useState } from 'react';
-import { canPlayAnimationTimeline, countEnabledAnimationBlocks } from '../lib/animation';
+import { useState, type ReactNode } from 'react';
+import {
+  canPlayAnimationTimeline,
+  countEnabledAnimationBlocks,
+} from '../lib/animation';
 import { deriveGeoPoseFields } from '../lib/navigation';
 import type {
   AnimationTimeline,
   AxisLockMode,
   CompareModeState,
+  HeadwayLayerKey,
+  HeadwayLayerVisibility,
+  HeadwayLayoutLook,
   QualityMode,
   ViewerMode,
   ViewerPreset,
 } from '../state/viewerStore';
+import type { ViewportLayoutMode } from '../app/useViewportLayout';
 
 type ControlDockProps = {
   quality: QualityMode;
+  headwayLayoutLook: HeadwayLayoutLook;
+  headwayLayerVisibility: HeadwayLayerVisibility;
   axisLockMode: AxisLockMode;
   compareModeState: CompareModeState;
   viewerMode: ViewerMode;
   presets: ViewerPreset[];
-  defaultPresetsOpen: boolean;
   animationDraft: AnimationTimeline;
   onModeChange: (mode: ViewerMode) => void;
   onQualityChange: (quality: QualityMode) => void;
+  onHeadwayLayoutLookChange: (look: HeadwayLayoutLook) => void;
+  onHeadwayLayerToggle: (layer: HeadwayLayerKey) => void;
   onToggleAxisLock: () => void;
   onAxisReset: () => void;
   onToggleCompare: () => void;
@@ -35,7 +45,63 @@ type ControlDockProps = {
   isFrozen: boolean;
   showBorders: boolean;
   isSceneAvailable: boolean;
+  layoutMode: ViewportLayoutMode;
 };
+
+type ControlDockSection =
+  | 'motion'
+  | 'layout'
+  | 'layers'
+  | 'animation'
+  | 'viewpoints';
+
+const HEADWAY_LAYOUT_LOOKS: Array<{
+  id: HeadwayLayoutLook;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: 'mission',
+    label: 'Mission',
+    description: 'Richer dark globe with realistic water, land, and warm road accents.',
+  },
+  {
+    id: 'daylight',
+    label: 'Daylight',
+    description: 'Realistic bright map with saturated ocean blues and greener land.',
+  },
+  {
+    id: 'atlas',
+    label: 'Atlas',
+    description: 'Printed-map palette with stronger terrain color and earthier roads.',
+  },
+  {
+    id: 'blueprint',
+    label: 'Blueprint',
+    description: 'Cool technical charting with stronger geometry lines.',
+  },
+  {
+    id: 'mono',
+    label: 'Mono',
+    description: 'Neutral grayscale with cleaner contrast and less haze.',
+  },
+  {
+    id: 'transit',
+    label: 'Transit',
+    description: 'Vivid transport colors with dense labels and brighter routes.',
+  },
+];
+
+const HEADWAY_LAYER_CONTROLS: Array<{
+  id: HeadwayLayerKey;
+  label: string;
+}> = [
+  { id: 'roads', label: 'Roads' },
+  { id: 'parks', label: 'Parks' },
+  { id: 'buildings', label: 'Buildings' },
+  { id: 'placeLabels', label: 'Place labels' },
+  { id: 'pois', label: 'POIs' },
+];
 
 const formatDurationLabel = (totalDurationMs: number) =>
   `${(totalDurationMs / 1_000).toFixed(1)}s`;
@@ -54,16 +120,79 @@ const formatStartPoseLabel = (timeline: AnimationTimeline) => {
   return 'Start pose missing';
 };
 
+function CollapseChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path
+        d={open ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ControlDockSectionCard({
+  children,
+  description,
+  id,
+  isOpen,
+  onToggle,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  id: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  title: string;
+}) {
+  return (
+    <section
+      className="hud-card hud-card--dock-section"
+      aria-label={`${title} section`}
+    >
+      <button
+        aria-controls={id}
+        aria-expanded={isOpen}
+        aria-label={`Toggle ${title.toLowerCase()} section`}
+        className="collapse-toggle collapse-toggle--section"
+        onClick={onToggle}
+        type="button"
+      >
+        <span className="collapse-toggle__content">
+          <span className="panel-kicker">{title}</span>
+          <small>{description}</small>
+        </span>
+        <span className="collapse-toggle__icon">
+          <CollapseChevronIcon open={isOpen} />
+        </span>
+      </button>
+      {isOpen ? (
+        <div className="control-section__body" id={id}>
+          {children}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function ControlDock({
   quality,
+  headwayLayoutLook,
+  headwayLayerVisibility,
   axisLockMode,
   compareModeState,
   viewerMode,
   presets,
-  defaultPresetsOpen,
   animationDraft,
   onModeChange,
   onQualityChange,
+  onHeadwayLayoutLookChange,
+  onHeadwayLayerToggle,
   onToggleAxisLock,
   onAxisReset,
   onToggleCompare,
@@ -79,18 +208,34 @@ export function ControlDock({
   isFrozen,
   showBorders,
   isSceneAvailable,
+  layoutMode,
 }: ControlDockProps) {
-  const [presetsOpen, setPresetsOpen] = useState(defaultPresetsOpen);
+  const [openSections, setOpenSections] = useState<
+    Record<ControlDockSection, boolean>
+  >(() => {
+    const defaultOpen = layoutMode !== 'mobile';
 
-  useEffect(() => {
-    setPresetsOpen(defaultPresetsOpen);
-  }, [defaultPresetsOpen]);
+    return {
+      motion: defaultOpen,
+      layout: defaultOpen,
+      layers: defaultOpen,
+      animation: defaultOpen,
+      viewpoints: defaultOpen,
+    };
+  });
+
+  const toggleSection = (section: ControlDockSection) => {
+    setOpenSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
+  };
 
   const compareButtonLabel =
     viewerMode !== 'geo'
       ? 'Compare (Geo only)'
       : compareModeState === 'pinned'
-        ? 'Comparing'
+        ? 'Compare active'
         : compareModeState === 'armed'
           ? 'Pick country'
           : 'Compare';
@@ -101,7 +246,7 @@ export function ControlDock({
   return (
     <>
       <section
-        className="hud-card hud-card--controls"
+        className="hud-card hud-card--controls hud-card--controls-primary"
         aria-label="Viewer controls"
       >
         <div className="hud-card__header">
@@ -180,17 +325,140 @@ export function ControlDock({
         </div>
 
         <div className="field">
-          <span>Animation</span>
+          <span>Actions</span>
+          <div className="button-row">
+            <button
+              className="secondary-button"
+              disabled={!isSceneAvailable}
+              onClick={onShare}
+              type="button"
+            >
+              {shareLabel}
+            </button>
+            <button
+              className="secondary-button"
+              onClick={onFullscreen}
+              type="button"
+            >
+              Fullscreen
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <ControlDockSectionCard
+        description="Freeze and borders"
+        id="control-dock-motion"
+        isOpen={openSections.motion}
+        onToggle={() => toggleSection('motion')}
+        title="Motion"
+      >
+        <div className="field field--section">
+          <div className="button-row">
+            <button
+              className={`secondary-button ${isFrozen ? 'secondary-button--active' : ''}`}
+              disabled={!isSceneAvailable}
+              onClick={onToggleFrozen}
+              type="button"
+            >
+              {isFrozen ? 'Unfreeze' : 'Freeze'}
+            </button>
+            <button
+              className={`secondary-button ${showBorders ? 'secondary-button--active' : ''}`}
+              disabled={!isSceneAvailable}
+              onClick={onToggleBorders}
+              type="button"
+            >
+              {showBorders ? 'Hide borders' : 'Borders'}
+            </button>
+          </div>
+        </div>
+      </ControlDockSectionCard>
+
+      <ControlDockSectionCard
+        description="Switch Headway map styling"
+        id="control-dock-layout"
+        isOpen={openSections.layout}
+        onToggle={() => toggleSection('layout')}
+        title="Layout"
+      >
+        {viewerMode === 'headway' ? (
+          <div className="preset-list">
+            {HEADWAY_LAYOUT_LOOKS.map((look) => (
+              <button
+                aria-pressed={headwayLayoutLook === look.id}
+                className={`preset-button ${headwayLayoutLook === look.id ? 'preset-button--active' : ''}`}
+                disabled={!isSceneAvailable}
+                key={look.id}
+                onClick={() => onHeadwayLayoutLookChange(look.id)}
+                type="button"
+              >
+                <span className="preset-button__title">
+                  <span>{look.label}</span>
+                </span>
+                <small>{look.description}</small>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="field field--section">
+            <small>Layout looks are available in Headway mode.</small>
+          </div>
+        )}
+      </ControlDockSectionCard>
+
+      <ControlDockSectionCard
+        description="Show or hide Headway map layers"
+        id="control-dock-layers"
+        isOpen={openSections.layers}
+        onToggle={() => toggleSection('layers')}
+        title="Layers"
+      >
+        {viewerMode === 'headway' ? (
+          <div className="field field--section">
+            <div className="button-row">
+              {HEADWAY_LAYER_CONTROLS.map((layer) => (
+                <button
+                  className={`secondary-button ${headwayLayerVisibility[layer.id] ? 'secondary-button--active' : ''}`}
+                  disabled={!isSceneAvailable}
+                  key={layer.id}
+                  onClick={() => onHeadwayLayerToggle(layer.id)}
+                  type="button"
+                >
+                  {layer.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="field field--section">
+            <small>Layer toggles are available in Headway mode.</small>
+          </div>
+        )}
+      </ControlDockSectionCard>
+
+      <ControlDockSectionCard
+        description="Playback and editor"
+        id="control-dock-animation"
+        isOpen={openSections.animation}
+        onToggle={() => toggleSection('animation')}
+        title="Animation"
+      >
+        <div className="field field--section">
           <div className="animation-summary">
             <div className="animation-summary__meta">
-              <strong>{viewerMode === 'geo' ? 'Geo timeline' : 'Headway timeline'}</strong>
-              <small>{formatDurationLabel(animationDraft.totalDurationMs)} total</small>
+              <strong>
+                {viewerMode === 'geo' ? 'Geo timeline' : 'Headway timeline'}
+              </strong>
+              <small>
+                {formatDurationLabel(animationDraft.totalDurationMs)} total
+              </small>
             </div>
             <div className="animation-summary__meta">
               <strong>{enabledBlocks}</strong>
               <small>
                 {enabledBlocks === 1 ? 'enabled block' : 'enabled blocks'}
-                {' · '}
+                {' / '}
                 {formatStartPoseLabel(animationDraft)}
               </small>
             </div>
@@ -213,81 +481,33 @@ export function ControlDock({
             </button>
           </div>
         </div>
+      </ControlDockSectionCard>
 
-        <div className="field">
-          <span>Motion</span>
-          <div className="button-row">
+      <ControlDockSectionCard
+        description="Saved camera presets"
+        id="control-dock-viewpoints"
+        isOpen={openSections.viewpoints}
+        onToggle={() => toggleSection('viewpoints')}
+        title="Viewpoints"
+      >
+        <div className="preset-list">
+          {presets.map((preset, index) => (
             <button
-              className={`secondary-button ${isFrozen ? 'secondary-button--active' : ''}`}
-              disabled={!isSceneAvailable}
-              onClick={onToggleFrozen}
+              className="preset-button"
+              disabled={!isSceneAvailable || isFrozen}
+              key={preset.id}
+              onClick={() => onPresetSelect(preset)}
               type="button"
             >
-              {isFrozen ? 'Unfreeze' : 'Freeze'}
+              <span className="preset-button__title">
+                <span>{preset.label}</span>
+                <kbd>{index + 1}</kbd>
+              </span>
+              <small>{preset.description}</small>
             </button>
-            <button
-              className={`secondary-button ${showBorders ? 'secondary-button--active' : ''}`}
-              disabled={!isSceneAvailable}
-              onClick={onToggleBorders}
-              type="button"
-            >
-              {showBorders ? 'Hide borders' : 'Borders'}
-            </button>
-          </div>
+          ))}
         </div>
-
-        <div className="field">
-          <span>Actions</span>
-          <div className="button-row">
-            <button
-              className="secondary-button"
-              disabled={!isSceneAvailable}
-              onClick={onShare}
-              type="button"
-            >
-              {shareLabel}
-            </button>
-            <button
-              className="secondary-button"
-              onClick={onFullscreen}
-              type="button"
-            >
-              Fullscreen
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="hud-card hud-card--presets" aria-label="View presets">
-        <button
-          aria-expanded={presetsOpen}
-          className="collapse-toggle"
-          onClick={() => setPresetsOpen((open) => !open)}
-          type="button"
-        >
-          <span className="panel-kicker">Viewpoints</span>
-          <span>{presetsOpen ? 'Hide' : 'Show'}</span>
-        </button>
-        {presetsOpen ? (
-          <div className="preset-list">
-            {presets.map((preset, index) => (
-              <button
-                className="preset-button"
-                disabled={!isSceneAvailable || isFrozen}
-                key={preset.id}
-                onClick={() => onPresetSelect(preset)}
-                type="button"
-              >
-                <span className="preset-button__title">
-                  <span>{preset.label}</span>
-                  <kbd>{index + 1}</kbd>
-                </span>
-                <small>{preset.description}</small>
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </section>
+      </ControlDockSectionCard>
     </>
   );
 }

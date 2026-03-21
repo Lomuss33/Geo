@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { DoubleSide } from 'three';
 import type { Mesh, Texture } from 'three';
 import type { QualityMode } from '../state/viewerStore';
 import { useViewerStore } from '../state/viewerStore';
@@ -134,21 +135,28 @@ export function Earth({ quality }: EarthProps) {
           bumpScale={
             quality === 'high' ? 0.008 : quality === 'balanced' ? 0.006 : 0.003
           }
-          roughness={0.92}
+          color="#f8fafc"
+          emissive="#415668"
+          emissiveIntensity={
+            quality === 'high' ? 0.07 : quality === 'balanced' ? 0.06 : 0.05
+          }
+          roughness={0.9}
           metalness={0}
         />
       </mesh>
 
       <mesh ref={cloudRef}>
         <sphereGeometry args={[1.012, cloudSphereSegments, cloudSphereSegments]} />
-        <meshStandardMaterial
-          map={cloudMap}
+        <meshBasicMaterial
+          alphaMap={cloudMap}
+          color="#f8fbfd"
           transparent
           opacity={
-            quality === 'high' ? 0.24 : quality === 'balanced' ? 0.2 : 0.14
+            quality === 'high' ? 0.18 : quality === 'balanced' ? 0.15 : 0.12
           }
           depthWrite={false}
-          alphaTest={0.08}
+          alphaTest={0.07}
+          side={DoubleSide}
         />
       </mesh>
     </group>

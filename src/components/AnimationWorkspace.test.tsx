@@ -20,7 +20,6 @@ const renderWorkspace = (
           draft={draft}
           importError={null}
           importHex={importHex}
-          layoutMode="monitor"
           onClearDraft={() => setDraft(createDefaultAnimationTimeline(draft.mode))}
           onClose={() => {}}
           onDraftChange={(next) =>
@@ -35,6 +34,7 @@ const renderWorkspace = (
           open
           phase="idle"
           playheadMs={playheadMs}
+          workspaceMode="bounded"
           viewerMode={draft.mode}
         />
         <output data-testid="draft-start-pose">
@@ -68,6 +68,30 @@ describe('AnimationWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: /^apply$/i }));
 
     expect(screen.getByText('3.25')).toBeInTheDocument();
+  });
+
+  it('renders the bounded workspace frame for large desktop editing', () => {
+    const { container } = renderWorkspace();
+
+    expect(screen.getByLabelText(/animation workspace/i)).toHaveClass(
+      'animation-workspace--bounded',
+    );
+    expect(
+      container.querySelector('.animation-workspace__frame--bounded'),
+    ).not.toBeNull();
+  });
+
+  it('keeps helper copy collapsed and exposes dense toolbar metadata', () => {
+    const { container } = renderWorkspace();
+
+    expect(screen.getByText(/locked start pose/i)).toBeInTheDocument();
+    expect(container.querySelector('.animation-workspace__helper[open]')).toBeNull();
+    expect(
+      container.querySelectorAll(
+        '.animation-workspace__toolbar-meta .animation-summary__meta',
+      ),
+    ).toHaveLength(2);
+    expect(container.querySelectorAll('.animation-command-strip')).toHaveLength(2);
   });
 
   it('renders and applies the Geo start pose editor', () => {

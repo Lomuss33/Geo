@@ -17,9 +17,12 @@ export function OnboardingModal({ open, onDismiss }: OnboardingModalProps) {
           Drag freely to orbit the globe like a trackball. Turn on
           <kbd>Axis lock</kbd> in the control deck if you want one-axis drags,
           use right drag or <kbd>Shift</kbd> plus drag for roll, turn on
-          <kbd>Compare</kbd> in Geo to click a visible country, snap the globe
-          to it, and pin a sticky country outline at screen center. Double-click
-          any visible point to snap it to center when compare mode is off.
+          <kbd>Compare</kbd> in Geo to click a visible country and pin its live
+          outline on the globe. While compare stays active the outline follows
+          the real globe view, drag and zoom stay active, you can click another
+          country to replace it, and the overlay keeps release and done actions
+          available. Double-click any visible point to snap it to center when
+          compare mode is off.
         </p>
         <ul className="control-list">
           <li>
@@ -40,7 +43,7 @@ export function OnboardingModal({ open, onDismiss }: OnboardingModalProps) {
           </li>
           <li>
             <span>Compare + click</span>
-            <strong>Snap and pin a sticky country outline</strong>
+            <strong>Pin a live outline for a visible country</strong>
           </li>
           <li>
             <span>Double-click</span>

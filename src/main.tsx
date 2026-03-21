@@ -13,14 +13,11 @@ normalizeInitialRuntimeUrl();
 
 const initialUrlState = readUrlState();
 const url = new URL(window.location.href);
-const hasExplicitGeoView = url.searchParams.has('view');
-const responsiveStartupView = hasExplicitGeoView
-  ? initialUrlState.view
-  : getResponsiveStartupGeoView(
-      initialUrlState.view,
-      window.innerWidth,
-      window.innerHeight,
-    );
+const responsiveStartupView = getResponsiveStartupGeoView(
+  initialUrlState.view,
+  window.innerWidth,
+  window.innerHeight,
+);
 const responsiveStartupHeadwayView =
   initialUrlState.mode === 'headway' && url.searchParams.has('map')
     ? initialUrlState.headwayView

@@ -1,4 +1,4 @@
-import { CanvasTexture, Color, RepeatWrapping, SRGBColorSpace } from 'three';
+import { CanvasTexture, NoColorSpace, RepeatWrapping } from 'three';
 
 const fract = (value: number) => value - Math.floor(value);
 
@@ -39,6 +39,8 @@ const fbm = (x: number, y: number, octaves = 5) => {
   return sum / totalAmplitude;
 };
 
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+
 export const createCloudTexture = (width = 1024, height = 512) => {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -51,30 +53,41 @@ export const createCloudTexture = (width = 1024, height = 512) => {
   }
 
   const image = context.createImageData(width, height);
-  const mist = new Color('#eff8ff');
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const index = (y * width + x) * 4;
       const nx = x / width;
       const ny = y / height;
-      const stormBands =
-        Math.sin(nx * Math.PI * 10 + ny * Math.PI * 8) * 0.08 + 0.92;
-      const density = fbm(nx * 7.6, ny * 5.8) * stormBands;
-      const alpha = Math.max(0, Math.min(1, (density - 0.53) * 3.1));
-      const brightness = Math.min(1, 0.88 + density * 0.24);
+      const latitude = Math.abs(ny - 0.5) * 2;
+      const equatorialBelt = 1 - Math.pow(Math.min(1, latitude), 1.5);
+      const tradeBands =
+        0.9 + Math.sin(nx * Math.PI * 2.9 + ny * Math.PI * 6.8) * 0.05;
+      const macro = fbm(nx * 3.2, ny * 2.1, 4);
+      const regional = fbm(nx * 7.2 + macro * 0.7, ny * 4.8, 5);
+      const wisps = fbm(nx * 18.4, ny * 10.3, 3);
+      const breaks = fbm(nx * 2.4 + 18.7, ny * 1.8 + 7.9, 3);
+      const cells = fbm(nx * 1.35 + 41.2, ny * 1.1 + 13.4, 3);
+      const fairWeatherBias = 0.03 + equatorialBelt * 0.09;
+      const structure =
+        regional * 0.66 + wisps * 0.18 + macro * 0.08 - breaks * 0.24;
+      const clusterMask = clamp01((cells - 0.52) * 2.6);
+      const density = structure * tradeBands * clusterMask + fairWeatherBias;
+      const coverage = clamp01((density - 0.69) * 2.4);
+      const softness = clamp01(0.16 + wisps * 0.46 + regional * 0.16);
+      const mask = Math.round(coverage * softness * 255);
 
-      image.data[index] = mist.r * 255 * brightness;
-      image.data[index + 1] = mist.g * 255 * brightness;
-      image.data[index + 2] = mist.b * 255 * brightness;
-      image.data[index + 3] = alpha * 255;
+      image.data[index] = mask;
+      image.data[index + 1] = mask;
+      image.data[index + 2] = mask;
+      image.data[index + 3] = 255;
     }
   }
 
   context.putImageData(image, 0, 0);
 
   const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
+  texture.colorSpace = NoColorSpace;
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
   texture.needsUpdate = true;

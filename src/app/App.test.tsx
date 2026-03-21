@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import {
@@ -6,7 +12,7 @@ import {
   serializeAnimationTimeline,
 } from '../lib/animation';
 import { getAllCountries } from '../lib/countryGeometry';
-import { DEFAULT_VIEW, viewFromLatLon } from '../lib/constants';
+import { COMPARE_MAX_DISTANCE, DEFAULT_VIEW, viewFromLatLon } from '../lib/constants';
 import { cloneView } from '../lib/math';
 import { useViewerStore } from '../state/viewerStore';
 
@@ -27,6 +33,7 @@ vi.mock('../scene/GlobeCanvas', () => ({
     onContextLost,
     onContextRestored,
     onRendererFailed,
+    onCountryPick,
     quality,
     showBorders,
     isFrozen,
@@ -36,8 +43,17 @@ vi.mock('../scene/GlobeCanvas', () => ({
     onRendererFailed: (failure: {
       tier: 'standard' | 'compatibility' | 'minimal' | null;
       attemptedTiers: ('standard' | 'compatibility' | 'minimal')[];
-      reason: 'canvas-fallback' | 'renderer-init-failed' | 'context-lost' | null;
+      reason:
+        | 'canvas-fallback'
+        | 'renderer-init-failed'
+        | 'context-lost'
+        | null;
       message: string | null;
+    }) => void;
+    onCountryPick: (country: {
+      id: string;
+      name: string;
+      centroid: [number, number];
     }) => void;
     quality: 'performance' | 'balanced' | 'high';
     showBorders: boolean;
@@ -64,6 +80,18 @@ vi.mock('../scene/GlobeCanvas', () => ({
       >
         Simulate renderer failure
       </button>
+      <button
+        onClick={() =>
+          onCountryPick({
+            id: compareCountry.id,
+            name: compareCountry.name,
+            centroid: [...compareCountry.centroid] as [number, number],
+          })
+        }
+        type="button"
+      >
+        Simulate country pick
+      </button>
       <span>{showBorders ? 'Borders enabled' : 'Borders disabled'}</span>
       <span>{isFrozen ? 'Frozen' : 'Live'}</span>
     </div>
@@ -74,6 +102,9 @@ vi.mock('../scene/HeadwayMap', () => ({
   HeadwayMap: ({
     view,
     quality,
+    headwayLayoutLook,
+    headwayLayerVisibility,
+    shellMode,
     showBorders,
     isFrozen,
     axisLockMode,
@@ -88,6 +119,21 @@ vi.mock('../scene/HeadwayMap', () => ({
       pitch: number;
     };
     quality: 'performance' | 'balanced' | 'high';
+    headwayLayoutLook:
+      | 'mission'
+      | 'daylight'
+      | 'atlas'
+      | 'blueprint'
+      | 'mono'
+      | 'transit';
+    headwayLayerVisibility: {
+      roads: boolean;
+      parks: boolean;
+      buildings: boolean;
+      placeLabels: boolean;
+      pois: boolean;
+    };
+    shellMode: 'dual-rail' | 'single-rail' | 'drawer';
     showBorders: boolean;
     isFrozen: boolean;
     axisLockMode: 'free' | 'axis-lock';
@@ -103,9 +149,16 @@ vi.mock('../scene/HeadwayMap', () => ({
     <div data-testid="headway-map">
       <span>{`Headway ${view.center[1].toFixed(1)},${view.center[0].toFixed(1)} @ ${view.zoom.toFixed(1)}`}</span>
       <span>{`Headway quality ${quality}`}</span>
-      <span>{showBorders ? 'Headway borders enabled' : 'Headway borders disabled'}</span>
+      <span>{`Headway look ${headwayLayoutLook}`}</span>
+      <span>{`Headway roads ${headwayLayerVisibility.roads ? 'on' : 'off'}`}</span>
+      <span>{`Headway shell ${shellMode}`}</span>
+      <span>
+        {showBorders ? 'Headway borders enabled' : 'Headway borders disabled'}
+      </span>
       <span>{isFrozen ? 'Headway frozen' : 'Headway live'}</span>
-      <span>{axisLockMode === 'axis-lock' ? 'Headway axis lock' : 'Headway free'}</span>
+      <span>
+        {axisLockMode === 'axis-lock' ? 'Headway axis lock' : 'Headway free'}
+      </span>
       <button onClick={onReady} type="button">
         Simulate headway ready
       </button>
@@ -129,6 +182,19 @@ vi.mock('../scene/HeadwayMap', () => ({
   ),
 }));
 
+vi.mock('../lib/countryProjection', () => ({
+  projectCountryOutlineToViewport: vi.fn(() => ({
+    path: 'M100 100 L220 140 L170 220',
+    bounds: {
+      left: 100,
+      top: 100,
+      right: 220,
+      bottom: 220,
+    },
+    hasVisibleGeometry: true,
+  })),
+}));
+
 describe('App', () => {
   const setViewport = (width: number, height: number) => {
     Object.defineProperty(window, 'innerWidth', {
@@ -142,6 +208,16 @@ describe('App', () => {
       writable: true,
     });
     window.dispatchEvent(new Event('resize'));
+  };
+
+  const openAnimationSection = () => {
+    const toggle = screen.getByRole('button', {
+      name: /toggle animation section/i,
+    });
+
+    if (toggle.getAttribute('aria-expanded') !== 'true') {
+      fireEvent.click(toggle);
+    }
   };
 
   beforeEach(() => {
@@ -169,6 +245,14 @@ describe('App', () => {
       rendererFailureReason: null,
       rendererFailureMessage: null,
       quality: 'balanced',
+      headwayLayoutLook: 'mission',
+      headwayLayerVisibility: {
+        roads: true,
+        parks: true,
+        buildings: true,
+        placeLabels: true,
+        pois: true,
+      },
       axisLockMode: 'free',
       compareModeState: 'off',
       selectedCountry: null,
@@ -196,57 +280,146 @@ describe('App', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the monitor shell with open overlay rails and the animation launcher', () => {
+  it('renders the dual-rail monitor shell with open rails and expanded control dock sections', () => {
     render(<App />);
 
+    expect(document.querySelector('.app-shell--dual-rail')).not.toBeNull();
     expect(document.querySelector('.overlay-shell--monitor')).not.toBeNull();
     expect(document.querySelector('.overlay-rail--left')).not.toBeNull();
     expect(document.querySelector('.overlay-rail--right')).not.toBeNull();
     expect(screen.getByLabelText(/viewer overview/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/viewer controls/i)).toBeInTheDocument();
     expect(screen.getByTestId('globe-canvas')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open editor/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^play$/i })).toBeDisabled();
-    expect(screen.getByText(/geo timeline/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /minimize status rail/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /minimize control rail/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /open status rail/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /open control rail/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /toggle motion section/i }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('button', { name: /toggle animation section/i }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('button', { name: /toggle viewpoints section/i }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('button', { name: /open editor/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^play$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /minimize status rail/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /minimize control rail/i }),
+    ).toBeInTheDocument();
   });
 
-  it('renders the tablet shell with collapsed overlay tabs', () => {
-    setViewport(1024, 768);
+  it('renders a single-rail shell with the control rail open by default', () => {
+    setViewport(1366, 768);
     render(<App />);
 
-    expect(document.querySelector('.overlay-shell--tablet')).not.toBeNull();
-    expect(document.querySelector('.overlay-tab--left')).not.toBeNull();
-    expect(document.querySelector('.overlay-tab--right')).not.toBeNull();
-    expect(document.querySelector('.overlay-rail--open')).toBeNull();
+    expect(document.querySelector('.app-shell--single-rail')).not.toBeNull();
+    expect(document.querySelector('.overlay-shell--monitor')).not.toBeNull();
+    expect(
+      screen.getByRole('button', { name: /open status rail/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /open control rail/i }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('.overlay-rail--right')).toHaveClass(
+      'overlay-rail--open',
+    );
+    expect(document.querySelector('.overlay-rail--left')).toHaveClass(
+      'overlay-rail--collapsed',
+    );
+    expect(
+      screen.getByRole('button', { name: /close control rail/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /close control rail/i }),
+    );
+    expect(document.querySelector('.overlay-rail--right')).toHaveClass(
+      'overlay-rail--collapsed',
+    );
   });
 
   it('renders the mobile shell with edge tabs and opens one panel at a time', () => {
     setViewport(390, 844);
     render(<App />);
 
+    expect(document.querySelector('.app-shell--drawer')).not.toBeNull();
     expect(document.querySelector('.overlay-shell--mobile')).not.toBeNull();
-    fireEvent.click(document.querySelector('.overlay-tab--right') as HTMLElement);
+    fireEvent.click(
+      document.querySelector('.overlay-tab--right') as HTMLElement,
+    );
     expect(screen.getByLabelText(/viewer controls/i)).toBeInTheDocument();
-    expect(document.querySelector('.overlay-rail--right')).toHaveClass('overlay-rail--open');
-    fireEvent.click(document.querySelector('.overlay-tab--left') as HTMLElement);
+    expect(document.querySelector('.overlay-rail--right')).toHaveClass(
+      'overlay-rail--open',
+    );
+    expect(
+      screen.getByRole('button', { name: /toggle animation section/i }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(
+      document.querySelector('.overlay-tab--left') as HTMLElement,
+    );
     expect(screen.getByText(/3d earth navigation/i)).toBeInTheDocument();
-    expect(document.querySelector('.overlay-rail--left')).toHaveClass('overlay-rail--open');
-    expect(document.querySelector('.overlay-rail--right')).toHaveClass('overlay-rail--collapsed');
+    expect(document.querySelector('.overlay-rail--left')).toHaveClass(
+      'overlay-rail--open',
+    );
+    expect(document.querySelector('.overlay-rail--right')).toHaveClass(
+      'overlay-rail--collapsed',
+    );
+  });
+
+  it('keeps the control rail open by default for non-mobile drawer layouts', () => {
+    setViewport(900, 1200);
+    render(<App />);
+
+    expect(document.querySelector('.app-shell--drawer')).not.toBeNull();
+    expect(document.querySelector('.overlay-shell--tablet')).not.toBeNull();
+    expect(document.querySelector('.overlay-rail--right')).toHaveClass(
+      'overlay-rail--open',
+    );
+    expect(document.querySelector('.overlay-rail--left')).toHaveClass(
+      'overlay-rail--collapsed',
+    );
   });
 
   it('updates the Geo compare button label across off, armed, and pinned states', () => {
     render(<App />);
 
+    expect(screen.queryByTestId('country-compare-overlay')).toBeNull();
+
     fireEvent.click(screen.getByRole('button', { name: /^compare$/i }));
-    expect(screen.getByRole('button', { name: /pick country/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /pick country/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('country-compare-armed')).toBeInTheDocument();
 
     act(() => {
       useViewerStore.getState().pinCountry(createSelectedCountry());
     });
 
-    expect(screen.getByRole('button', { name: /comparing/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /compare active/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('cancels armed compare from the overlay and returns to off', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^compare$/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /cancel compare mode/i }),
+    );
+
+    expect(useViewerStore.getState().compareModeState).toBe('off');
+    expect(screen.queryByTestId('country-compare-overlay')).toBeNull();
+    expect(screen.getByRole('button', { name: /^compare$/i })).toBeInTheDocument();
   });
 
   it('disables compare in Headway and clears any pinned country on mode switch', () => {
@@ -265,7 +438,7 @@ describe('App', () => {
     ).toBeDisabled();
   });
 
-  it('renders the pinned compare overlay and returns to armed when released', () => {
+  it('releases the pinned compare outline and returns to armed mode', () => {
     useViewerStore.setState({
       compareModeState: 'pinned',
       selectedCountry: createSelectedCountry(),
@@ -274,24 +447,94 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByTestId('country-compare-overlay')).toBeInTheDocument();
-    expect(screen.queryByText(/click reticle to release/i)).toBeNull();
+    expect(
+      screen.queryByText(/centered and pinned/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/live compare outline\. drag and zoom stay active\./i),
+    ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /release compare/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /release outline for/i }),
+    );
 
     expect(useViewerStore.getState().compareModeState).toBe('armed');
     expect(useViewerStore.getState().selectedCountry).toBeNull();
+    expect(screen.getByTestId('country-compare-armed')).toBeInTheDocument();
+  });
+
+  it('exits compare completely from the pinned overlay done action', () => {
+    useViewerStore.setState({
+      compareModeState: 'pinned',
+      selectedCountry: createSelectedCountry(),
+    });
+
+    render(<App />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /done with compare mode/i }),
+    );
+
+    expect(useViewerStore.getState().compareModeState).toBe('off');
+    expect(useViewerStore.getState().selectedCountry).toBeNull();
     expect(screen.queryByTestId('country-compare-overlay')).toBeNull();
+  });
+
+  it('pins compare without recentering the globe and only clamps distance into the compare band', () => {
+    const initialView = viewFromLatLon(18, -30, 4.4, 12);
+
+    useViewerStore.setState({
+      view: cloneView(initialView),
+      targetView: cloneView(initialView),
+      compareModeState: 'armed',
+      selectedCountry: null,
+    });
+
+    render(<App />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /simulate country pick/i }),
+    );
+
+    const nextView = useViewerStore.getState().view;
+    const targetView = useViewerStore.getState().targetView;
+
+    expect(useViewerStore.getState().compareModeState).toBe('pinned');
+    expect(useViewerStore.getState().selectedCountry?.id).toBe(compareCountry.id);
+    expect(useViewerStore.getState().geoOverviewAnchor).toBeNull();
+    expect(nextView.distance).toBeCloseTo(COMPARE_MAX_DISTANCE, 6);
+    expect(targetView).toEqual(nextView);
   });
 
   it('opens the animation workspace from the control dock', () => {
     render(<App />);
 
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /open editor/i }));
 
     expect(screen.getByLabelText(/animation workspace/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/animation workspace/i)).toHaveClass(
+      'animation-workspace--bounded',
+    );
     expect(screen.queryByLabelText(/viewer controls/i)).toBeNull();
-    expect(screen.getByRole('button', { name: /play from playhead/i })).toBeDisabled();
-    expect(screen.getByRole('spinbutton', { name: /latitude/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /play from playhead/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('spinbutton', { name: /latitude/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the animation workspace in stacked mode for short landscape viewports', () => {
+    setViewport(844, 390);
+    render(<App />);
+
+    openAnimationSection();
+    fireEvent.click(screen.getByRole('button', { name: /open editor/i }));
+
+    expect(screen.getByLabelText(/animation workspace/i)).toHaveClass(
+      'animation-workspace--stacked',
+    );
   });
 
   it('opens the workspace from the stored draft start pose instead of the live view', () => {
@@ -308,19 +551,30 @@ describe('App', () => {
     });
 
     render(<App />);
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /open editor/i }));
 
-    expect(useViewerStore.getState().animationSession.previewGeoView).toMatchObject(
-      storedStartView,
-    );
-    expect(useViewerStore.getState().animationSession.previewGeoView).not.toMatchObject(
-      liveView,
-    );
+    expect(
+      useViewerStore.getState().animationSession.previewGeoView,
+    ).not.toBeNull();
+    expect(
+      useViewerStore.getState().animationSession.previewGeoView?.distance,
+    ).toBeCloseTo(storedStartView.distance, 6);
+    expect(
+      useViewerStore.getState().animationSession.previewGeoView?.fov,
+    ).toBeCloseTo(storedStartView.fov, 6);
+    expect(
+      useViewerStore.getState().animationSession.previewGeoView?.rotation[0] ?? 0,
+    ).toBeCloseTo(storedStartView.rotation[0], 6);
+    expect(
+      useViewerStore.getState().animationSession.previewGeoView,
+    ).not.toMatchObject(liveView);
   });
 
   it('shows an inline error for invalid animation hex inside the workspace', () => {
     render(<App />);
 
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /open editor/i }));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'BAD' },
@@ -349,6 +603,7 @@ describe('App', () => {
 
     render(<App />);
 
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /open editor/i }));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: headwayHex },
@@ -358,6 +613,35 @@ describe('App', () => {
     expect(screen.getByLabelText(/animation workspace/i)).toBeInTheDocument();
     expect(useViewerStore.getState().viewerMode).toBe('headway');
     expect(useViewerStore.getState().animationDraft.mode).toBe('headway');
+  });
+
+  it('passes the active shell mode into Headway when compact navigation is needed', () => {
+    setViewport(1024, 768);
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /headway/i }));
+
+    expect(screen.getByText(/headway shell single-rail/i)).toBeInTheDocument();
+  });
+
+  it('lets Headway switch between multiple layout looks from the control dock', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /headway/i }));
+    fireEvent.click(screen.getByRole('button', { name: /atlas/i }));
+
+    expect(useViewerStore.getState().headwayLayoutLook).toBe('atlas');
+    expect(screen.getByText(/headway look atlas/i)).toBeInTheDocument();
+  });
+
+  it('lets Headway toggle map layers from the control dock', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /headway/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^roads$/i }));
+
+    expect(useViewerStore.getState().headwayLayerVisibility.roads).toBe(false);
+    expect(screen.getByText(/headway roads off/i)).toBeInTheDocument();
   });
 
   it('upgrades imported version 1 animation hex to a version 2 draft with a default start pose', () => {
@@ -380,6 +664,7 @@ describe('App', () => {
     );
 
     render(<App />);
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /open editor/i }));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: legacyHex },
@@ -387,7 +672,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /load hex/i }));
 
     expect(useViewerStore.getState().animationDraft.version).toBe(2);
-    expect(useViewerStore.getState().animationDraft.startGeoView).not.toBeNull();
+    expect(
+      useViewerStore.getState().animationDraft.startGeoView,
+    ).not.toBeNull();
   });
 
   it('hides the shell during playback and returns to the workspace when playback finishes', async () => {
@@ -412,12 +699,17 @@ describe('App', () => {
     );
 
     render(<App />);
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /^play$/i }));
 
     expect(screen.queryByLabelText(/viewer controls/i)).toBeNull();
     expect(screen.queryByLabelText(/animation workspace/i)).toBeNull();
-    expect(screen.getByLabelText(/animation playback overlay/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /stop playback/i })).toBeVisible();
+    expect(
+      screen.getByLabelText(/animation playback overlay/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /stop playback/i }),
+    ).toBeVisible();
 
     await act(async () => {
       vi.advanceTimersByTime(200);
@@ -448,8 +740,11 @@ describe('App', () => {
     );
 
     render(<App />);
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /^play$/i }));
-    expect(screen.getByLabelText(/animation playback overlay/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/animation playback overlay/i),
+    ).toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'Escape' });
 
     expect(screen.getByLabelText(/animation workspace/i)).toBeInTheDocument();
@@ -477,6 +772,7 @@ describe('App', () => {
     );
 
     render(<App />);
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /^play$/i }));
     fireEvent.click(screen.getByRole('button', { name: /stop playback/i }));
 
@@ -487,6 +783,7 @@ describe('App', () => {
   it('closes the workspace and restores the fallback UI when the renderer fails', async () => {
     render(<App />);
 
+    openAnimationSection();
     fireEvent.click(screen.getByRole('button', { name: /open editor/i }));
     fireEvent.click(
       screen.getByRole('button', { name: /simulate renderer failure/i }),
@@ -497,7 +794,9 @@ describe('App', () => {
     });
 
     expect(
-      screen.getByRole('heading', { name: /3d renderer unavailable right now/i }),
+      screen.getByRole('heading', {
+        name: /3d renderer unavailable right now/i,
+      }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/viewer controls/i)).toBeInTheDocument();
   });

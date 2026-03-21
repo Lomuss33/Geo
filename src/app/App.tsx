@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useViewportLayout } from './useViewportLayout';
+import { useViewportProfile } from './useViewportProfile';
 import { useAnimationSessionDriver } from './useAnimationSessionDriver';
 import { ViewerShortcuts } from './ViewerShortcuts';
 import { AnimationPlaybackOverlay } from '../components/AnimationPlaybackOverlay';
@@ -32,11 +32,13 @@ import {
   serializeAnimationTimeline,
 } from '../lib/animation';
 import {
+  COMPARE_MAX_DISTANCE,
+  COMPARE_MIN_DISTANCE,
   DEFAULT_VIEW,
   STORAGE_KEYS,
   VIEWER_PRESETS,
-  viewFromLatLon,
 } from '../lib/constants';
+import { clamp } from '../lib/math';
 import { geoFromHeadway, headwayFromGeo } from '../lib/modeBridge';
 import { resetGeoAxes, resetHeadwayAxes } from '../lib/navigation';
 import { formatRendererTier } from '../lib/renderer';
@@ -50,6 +52,8 @@ import { HeadwayMap } from '../scene/HeadwayMap';
 import type {
   AnimationTimeline,
   GeoOverviewAnchor,
+  HeadwayLayerVisibility,
+  HeadwayLayoutLook,
   HeadwayViewState,
   QualityMode,
   SelectedCountry,
@@ -57,7 +61,7 @@ import type {
   ViewerPreset,
 } from '../state/viewerStore';
 import { readStoredAnimationDraft, useViewerStore } from '../state/viewerStore';
-import type { ViewportLayoutMode } from './useViewportLayout';
+import type { ShellMode, ViewportLayoutMode } from './useViewportProfile';
 
 type RailState = {
   leftOpen: boolean;
@@ -67,16 +71,118 @@ type RailState = {
 };
 
 type RailAction =
-  | { type: 'sync-layout'; layoutMode: ViewportLayoutMode }
-  | { type: 'open-left'; layoutMode: ViewportLayoutMode }
-  | { type: 'open-right'; layoutMode: ViewportLayoutMode }
-  | { type: 'close-left'; layoutMode: ViewportLayoutMode }
-  | { type: 'close-right'; layoutMode: ViewportLayoutMode };
+  | {
+      type: 'sync-layout';
+      shellMode: ShellMode;
+      layoutMode: ViewportLayoutMode;
+    }
+  | {
+      type: 'open-left';
+      shellMode: ShellMode;
+      layoutMode: ViewportLayoutMode;
+    }
+  | {
+      type: 'open-right';
+      shellMode: ShellMode;
+      layoutMode: ViewportLayoutMode;
+    }
+  | {
+      type: 'close-left';
+      shellMode: ShellMode;
+      layoutMode: ViewportLayoutMode;
+    }
+  | {
+      type: 'close-right';
+      shellMode: ShellMode;
+      layoutMode: ViewportLayoutMode;
+    };
 
-function createRailState(layoutMode: ViewportLayoutMode): RailState {
-  if (layoutMode === 'monitor') {
+function RailTriggerIcon({ side }: { side: 'left' | 'right' }) {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      {side === 'left' ? (
+        <>
+          <path
+            d="M5 5h2v14H5zM12 8l-3 4 3 4"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M15 8h4M15 12h4M15 16h4"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="1.8"
+          />
+        </>
+      ) : (
+        <>
+          <path
+            d="M17 5h2v14h-2zM12 8l3 4-3 4"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M5 8h4M5 12h4M5 16h4"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="1.8"
+          />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function RailActionIcon({ action }: { action: 'close' | 'minimize' }) {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      {action === 'minimize' ? (
+        <path
+          d="M7 16h10"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.8"
+        />
+      ) : (
+        <path
+          d="M8 8l8 8M16 8l-8 8"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.8"
+        />
+      )}
+    </svg>
+  );
+}
+
+function createRailState(input: {
+  shellMode: ShellMode;
+  layoutMode: ViewportLayoutMode;
+}): RailState {
+  const { shellMode, layoutMode } = input;
+
+  if (shellMode === 'dual-rail') {
     return {
       leftOpen: true,
+      rightOpen: true,
+      leftMinimized: false,
+      rightMinimized: false,
+    };
+  }
+
+  if (layoutMode !== 'mobile') {
+    return {
+      leftOpen: false,
       rightOpen: true,
       leftMinimized: false,
       rightMinimized: false,
@@ -94,9 +200,9 @@ function createRailState(layoutMode: ViewportLayoutMode): RailState {
 function railStateReducer(state: RailState, action: RailAction): RailState {
   switch (action.type) {
     case 'sync-layout':
-      return createRailState(action.layoutMode);
+      return createRailState(action);
     case 'open-left':
-      if (action.layoutMode === 'monitor') {
+      if (action.shellMode === 'dual-rail') {
         return { ...state, leftOpen: true, leftMinimized: false };
       }
 
@@ -108,7 +214,7 @@ function railStateReducer(state: RailState, action: RailAction): RailState {
         rightMinimized: false,
       };
     case 'open-right':
-      if (action.layoutMode === 'monitor') {
+      if (action.shellMode === 'dual-rail') {
         return { ...state, rightOpen: true, rightMinimized: false };
       }
 
@@ -120,13 +226,13 @@ function railStateReducer(state: RailState, action: RailAction): RailState {
         rightMinimized: false,
       };
     case 'close-left':
-      if (action.layoutMode === 'monitor') {
+      if (action.shellMode === 'dual-rail') {
         return { ...state, leftOpen: false, leftMinimized: true };
       }
 
       return { ...state, leftOpen: false };
     case 'close-right':
-      if (action.layoutMode === 'monitor') {
+      if (action.shellMode === 'dual-rail') {
         return { ...state, rightOpen: false, rightMinimized: true };
       }
 
@@ -137,7 +243,13 @@ function railStateReducer(state: RailState, action: RailAction): RailState {
 }
 
 function App() {
-  const layoutMode = useViewportLayout();
+  const viewportProfile = useViewportProfile();
+  const {
+    legacyLayoutMode: layoutMode,
+    orientation,
+    shellMode,
+    workspaceMode,
+  } = viewportProfile;
   const telemetry = useViewerStore((state) => state.telemetry);
   const viewerMode = useViewerStore((state) => state.viewerMode);
   const headwayView = useViewerStore((state) => state.headwayView);
@@ -148,12 +260,14 @@ function App() {
     (state) => state.headwayErrorMessage,
   );
   const quality = useViewerStore((state) => state.quality);
+  const headwayLayoutLook = useViewerStore((state) => state.headwayLayoutLook);
+  const headwayLayerVisibility = useViewerStore(
+    (state) => state.headwayLayerVisibility,
+  );
   const axisLockMode = useViewerStore((state) => state.axisLockMode);
   const compareModeState = useViewerStore((state) => state.compareModeState);
   const selectedCountry = useViewerStore((state) => state.selectedCountry);
-  const geoOverviewAnchor = useViewerStore(
-    (state) => state.geoOverviewAnchor,
-  );
+  const geoOverviewAnchor = useViewerStore((state) => state.geoOverviewAnchor);
   const geoOverviewHeadingDeg = useViewerStore(
     (state) => state.geoOverviewHeadingDeg,
   );
@@ -194,6 +308,12 @@ function App() {
     (state) => state.setHeadwayErrorMessage,
   );
   const setQuality = useViewerStore((state) => state.setQuality);
+  const setHeadwayLayoutLook = useViewerStore(
+    (state) => state.setHeadwayLayoutLook,
+  );
+  const setHeadwayLayerVisibility = useViewerStore(
+    (state) => state.setHeadwayLayerVisibility,
+  );
   const setAxisLockMode = useViewerStore((state) => state.setAxisLockMode);
   const setGeoOverviewAnchor = useViewerStore(
     (state) => state.setGeoOverviewAnchor,
@@ -206,7 +326,9 @@ function App() {
   );
   const armCountryCompare = useViewerStore((state) => state.armCountryCompare);
   const pinCountry = useViewerStore((state) => state.pinCountry);
-  const clearPinnedCountry = useViewerStore((state) => state.clearPinnedCountry);
+  const clearPinnedCountry = useViewerStore(
+    (state) => state.clearPinnedCountry,
+  );
   const disableCountryCompare = useViewerStore(
     (state) => state.disableCountryCompare,
   );
@@ -254,10 +376,9 @@ function App() {
   const [shareLabel, setShareLabel] = useState('Copy share link');
   const [geoCanvasKey, setGeoCanvasKey] = useState(0);
   const [headwayInstanceKey, setHeadwayInstanceKey] = useState(0);
-  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [railState, dispatchRailState] = useReducer(
     railStateReducer,
-    layoutMode,
+    { shellMode, layoutMode },
     createRailState,
   );
   const recoveryTimerRef = useRef<number | null>(null);
@@ -271,6 +392,12 @@ function App() {
     const storedRotationMode = window.localStorage.getItem(
       STORAGE_KEYS.rotationMode,
     );
+    const storedHeadwayLayoutLook = window.localStorage.getItem(
+      STORAGE_KEYS.headwayLayoutLook,
+    ) as HeadwayLayoutLook | null;
+    const storedHeadwayLayerVisibility = window.localStorage.getItem(
+      STORAGE_KEYS.headwayLayerVisibility,
+    );
     const onboardingDismissed =
       window.localStorage.getItem(STORAGE_KEYS.onboarding) === 'true';
 
@@ -282,20 +409,53 @@ function App() {
       setQuality(storedQuality);
     }
 
-    if (
-      storedRotationMode === 'free' ||
-      storedRotationMode === 'axis-lock'
-    ) {
+    if (storedRotationMode === 'free' || storedRotationMode === 'axis-lock') {
       setAxisLockMode(storedRotationMode);
+    }
+
+    if (
+      storedHeadwayLayoutLook === 'mission' ||
+      storedHeadwayLayoutLook === 'daylight' ||
+      storedHeadwayLayoutLook === 'atlas' ||
+      storedHeadwayLayoutLook === 'blueprint' ||
+      storedHeadwayLayoutLook === 'mono' ||
+      storedHeadwayLayoutLook === 'transit'
+    ) {
+      setHeadwayLayoutLook(storedHeadwayLayoutLook);
+    }
+
+    if (storedHeadwayLayerVisibility) {
+      try {
+        const parsed = JSON.parse(
+          storedHeadwayLayerVisibility,
+        ) as Partial<HeadwayLayerVisibility>;
+        setHeadwayLayerVisibility({
+          roads: parsed.roads ?? true,
+          parks: parsed.parks ?? true,
+          buildings: parsed.buildings ?? true,
+          placeLabels: parsed.placeLabels ?? true,
+          pois: parsed.pois ?? true,
+        });
+      } catch {
+        // Ignore invalid persisted Headway layer visibility.
+      }
     }
 
     if (onboardingDismissed) {
       setShowOnboarding(false);
     }
-  }, [setAxisLockMode, setQuality, setShowOnboarding]);
+  }, [
+    setAxisLockMode,
+    setHeadwayLayerVisibility,
+    setHeadwayLayoutLook,
+    setQuality,
+    setShowOnboarding,
+  ]);
 
   useEffect(() => {
-    loadAnimationDraft(readStoredAnimationDraft(useViewerStore.getState().viewerMode));
+    loadAnimationDraft(
+      readStoredAnimationDraft(useViewerStore.getState().viewerMode),
+    );
   }, [loadAnimationDraft]);
 
   useEffect(() => {
@@ -315,6 +475,17 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEYS.rotationMode, axisLockMode);
   }, [axisLockMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEYS.headwayLayoutLook, headwayLayoutLook);
+  }, [headwayLayoutLook]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      STORAGE_KEYS.headwayLayerVisibility,
+      JSON.stringify(headwayLayerVisibility),
+    );
+  }, [headwayLayerVisibility]);
 
   useEffect(
     () => () => {
@@ -338,24 +509,11 @@ function App() {
   }, [layoutMode]);
 
   useEffect(() => {
-    dispatchRailState({ type: 'sync-layout', layoutMode });
-  }, [layoutMode]);
-
-  useEffect(() => {
-    const handleResize = () => setViewportWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
+    dispatchRailState({ type: 'sync-layout', shellMode, layoutMode });
+  }, [layoutMode, shellMode]);
 
   const syncCurrentUrl = useCallback(
-    (
-      nextMode: ViewerMode,
-      nextView = view,
-      nextHeadwayView = headwayView,
-    ) => {
+    (nextMode: ViewerMode, nextView = view, nextHeadwayView = headwayView) => {
       if (!liveSyncViewUrl) {
         return;
       }
@@ -576,9 +734,7 @@ function App() {
       applyHumanViewConstraint(nextView, {
         sourceDistance: options?.sourceDistance ?? view.distance,
         anchor:
-          options?.anchor === undefined
-            ? geoOverviewAnchor
-            : options.anchor,
+          options?.anchor === undefined ? geoOverviewAnchor : options.anchor,
         headingDeg:
           options?.headingDeg === undefined
             ? geoOverviewHeadingDeg
@@ -619,39 +775,34 @@ function App() {
     clearPinnedCountry();
   };
 
+  const handleExitCompareMode = () => {
+    disableCountryCompare();
+  };
+
   const handleCountryPick = (country: SelectedCountry) => {
     if (viewerMode !== 'geo') {
       return;
     }
 
-    const [lon, lat] = country.centroid;
-    if (geoOverviewAnchor || isHumanViewActive(view.distance)) {
-      setGeoOverviewAnchor({ lat, lon });
-      animateToView(
-        applyGeoConstraint(
-          surfaceAnchoredGeoView({
-            lat,
-            lon,
-            headingDeg: geoOverviewHeadingDeg,
-            distance: view.distance,
-            baseFov: view.fov,
-          }),
-          {
-            anchor: { lat, lon },
-          },
-        ),
+    const compareDistance = clamp(
+      view.distance,
+      COMPARE_MIN_DISTANCE,
+      COMPARE_MAX_DISTANCE,
+    );
+
+    if (Math.abs(compareDistance - view.distance) > 1e-6) {
+      const clampedView = applyGeoConstraint(
+        {
+          ...view,
+          distance: compareDistance,
+        },
+        {
+          sourceDistance: view.distance,
+        },
       );
-    } else {
-      clearGeoOverviewState();
-      animateToView(
-        applyGeoConstraint(
-          {
-            ...viewFromLatLon(lat, lon, view.distance, 0),
-            fov: view.fov,
-          },
-          { anchor: null, headingDeg: 0 },
-        ),
-      );
+
+      applyImmediateView(clampedView);
+      syncCurrentUrl('geo', clampedView);
     }
 
     pinCountry(country);
@@ -881,8 +1032,6 @@ function App() {
     return '';
   }, [headwayRenderState, loadState, renderState, viewerMode]);
 
-  const defaultPresetsOpen = layoutMode === 'monitor' && viewportWidth >= 1440;
-
   const isSceneAvailable =
     viewerMode === 'geo'
       ? renderState !== 'failed'
@@ -1003,51 +1152,48 @@ function App() {
     viewerMode,
   ]);
 
-  const warningCard =
-    ((viewerMode === 'geo' &&
-      (renderState === 'failed' || loadState === 'error')) ||
-      (viewerMode === 'headway' && headwayRenderState === 'error')) && (
-      <section className="hud-card hud-card--warning" role="status">
-        <span className="panel-kicker">{titleMessage}</span>
-        {viewerMode === 'headway' ? (
+  const warningCard = ((viewerMode === 'geo' &&
+    (renderState === 'failed' || loadState === 'error')) ||
+    (viewerMode === 'headway' && headwayRenderState === 'error')) && (
+    <section className="hud-card hud-card--warning" role="status">
+      <span className="panel-kicker">{titleMessage}</span>
+      {viewerMode === 'headway' ? (
+        <p>
+          {headwayErrorMessage ??
+            'The Headway basemap is currently unavailable.'}
+        </p>
+      ) : renderState === 'failed' ? (
+        <>
           <p>
-            {headwayErrorMessage ??
-              'The Headway basemap is currently unavailable.'}
+            {rendererFailureMessage ??
+              'Geo could not initialize a working WebGL renderer.'}
           </p>
-        ) : renderState === 'failed' ? (
-          <>
-            <p>
-              {rendererFailureMessage ??
-                'Geo could not initialize a working WebGL renderer.'}
-            </p>
-            <dl className="renderer-diagnostics">
-              <div>
-                <dt>Last tier</dt>
-                <dd>{formatRendererTier(rendererTier)}</dd>
-              </div>
-              <div>
-                <dt>Tried</dt>
-                <dd>
-                  {rendererAttempts.length > 0
-                    ? rendererAttempts
-                        .map((tier) => formatRendererTier(tier))
-                        .join(' / ')
-                    : 'None'}
-                </dd>
-              </div>
-              <div>
-                <dt>Reason</dt>
-                <dd>{rendererFailureReason ?? 'Unknown'}</dd>
-              </div>
-            </dl>
-          </>
-        ) : (
-          <p>
-            {errorMessage ?? 'The viewer is running with reduced fidelity.'}
-          </p>
-        )}
-      </section>
-    );
+          <dl className="renderer-diagnostics">
+            <div>
+              <dt>Last tier</dt>
+              <dd>{formatRendererTier(rendererTier)}</dd>
+            </div>
+            <div>
+              <dt>Tried</dt>
+              <dd>
+                {rendererAttempts.length > 0
+                  ? rendererAttempts
+                      .map((tier) => formatRendererTier(tier))
+                      .join(' / ')
+                  : 'None'}
+              </dd>
+            </div>
+            <div>
+              <dt>Reason</dt>
+              <dd>{rendererFailureReason ?? 'Unknown'}</dd>
+            </div>
+          </dl>
+        </>
+      ) : (
+        <p>{errorMessage ?? 'The viewer is running with reduced fidelity.'}</p>
+      )}
+    </section>
+  );
 
   const activeRenderer =
     viewerMode === 'geo' ? (
@@ -1067,9 +1213,12 @@ function App() {
     ) : (
       <HeadwayMap
         axisLockMode={axisLockMode}
+        headwayLayerVisibility={headwayLayerVisibility}
+        headwayLayoutLook={headwayLayoutLook}
         isFrozen={isFrozen}
         key={headwayInstanceKey}
         quality={quality}
+        shellMode={shellMode}
         showBorders={showBorders}
         view={headwayView}
         onError={handleHeadwayError}
@@ -1088,37 +1237,37 @@ function App() {
         ? 'Renderer offline'
         : isFrozen
           ? 'Geo paused'
-        : telemetry.sunlit
+          : telemetry.sunlit
             ? 'Geo sunlit'
             : 'Geo night';
   const handleOpenLeftRail = () => {
-    dispatchRailState({ type: 'open-left', layoutMode });
+    dispatchRailState({ type: 'open-left', shellMode, layoutMode });
   };
 
   const handleOpenRightRail = () => {
-    dispatchRailState({ type: 'open-right', layoutMode });
+    dispatchRailState({ type: 'open-right', shellMode, layoutMode });
   };
 
   const handleCloseLeftRail = () => {
-    dispatchRailState({ type: 'close-left', layoutMode });
+    dispatchRailState({ type: 'close-left', shellMode, layoutMode });
   };
 
   const handleCloseRightRail = () => {
-    dispatchRailState({ type: 'close-right', layoutMode });
+    dispatchRailState({ type: 'close-right', shellMode, layoutMode });
   };
 
   const leftRailVisible =
-    layoutMode === 'monitor'
+    shellMode === 'dual-rail'
       ? railState.leftOpen && !railState.leftMinimized
       : railState.leftOpen;
   const rightRailVisible =
-    layoutMode === 'monitor'
+    shellMode === 'dual-rail'
       ? railState.rightOpen && !railState.rightMinimized
       : railState.rightOpen;
 
   const leftRailContent = (
     <>
-      <BrandPanel compact={layoutMode === 'mobile'} />
+      <BrandPanel compact />
       <HudPanel
         telemetry={telemetry}
         activeAxis={activeAxis}
@@ -1141,11 +1290,18 @@ function App() {
       animationDraft={animationDraft}
       axisLockMode={axisLockMode}
       compareModeState={compareModeState}
-      defaultPresetsOpen={defaultPresetsOpen}
+      headwayLayerVisibility={headwayLayerVisibility}
+      headwayLayoutLook={headwayLayoutLook}
       isFrozen={isFrozen}
       isSceneAvailable={isSceneAvailable}
       onAxisReset={handleAxisReset}
       onFullscreen={toggleFullscreen}
+      onHeadwayLayoutLookChange={setHeadwayLayoutLook}
+      onHeadwayLayerToggle={(layer) =>
+        setHeadwayLayerVisibility({
+          [layer]: !headwayLayerVisibility[layer],
+        })
+      }
       onHelp={() => setShowOnboarding(true)}
       onModeChange={changeViewerMode}
       onOpenAnimationWorkspace={handleOpenAnimationWorkspace}
@@ -1153,24 +1309,29 @@ function App() {
       onPresetSelect={openPreset}
       onQualityChange={changeQuality}
       onShare={shareView}
-      onToggleCompare={handleToggleCompareMode}
-      onToggleBorders={toggleShowBorders}
-      onToggleFrozen={toggleFrozen}
       onToggleAxisLock={handleToggleAxisLock}
+      onToggleBorders={toggleShowBorders}
+      onToggleCompare={handleToggleCompareMode}
+      onToggleFrozen={toggleFrozen}
       presets={VIEWER_PRESETS}
       quality={quality}
       shareLabel={shareLabel}
       showBorders={showBorders}
+      layoutMode={layoutMode}
       viewerMode={viewerMode}
     />
   );
 
+  const appShellClassName = `app-shell app-shell--${layoutMode} app-shell--${shellMode} app-shell--${orientation}`;
+
   return (
-    <main className={`app-shell app-shell--${layoutMode}`}>
+    <main className={appShellClassName}>
       {isAnimationWorkspaceOpen ? (
         <>
           <div className="space-backdrop" aria-hidden="true" />
-          <div className={`scene-host scene-host--workspace scene-host--${layoutMode}`}>
+          <div
+            className={`scene-host scene-host--workspace scene-host--${layoutMode} scene-host--${shellMode}`}
+          >
             {activeRenderer}
           </div>
           <AnimationWorkspace
@@ -1179,7 +1340,6 @@ function App() {
             importError={animationImportError}
             importHex={animationImportHex}
             key={viewerMode}
-            layoutMode={layoutMode}
             onClearDraft={handleClearAnimationDraft}
             onClose={closeWorkspaceWithPreview}
             onDraftChange={setAnimationDraft}
@@ -1190,6 +1350,7 @@ function App() {
             open={isAnimationWorkspaceOpen}
             phase={animationSession.phase}
             playheadMs={animationSession.playheadMs}
+            workspaceMode={workspaceMode}
             viewerMode={viewerMode}
           />
           {isAnimationPlaying ? (
@@ -1203,49 +1364,67 @@ function App() {
       ) : (
         <>
           <div className="space-backdrop" aria-hidden="true" />
-          <div className={`scene-host scene-host--viewer scene-host--${layoutMode}`}>
+          <div
+            className={`scene-host scene-host--viewer scene-host--${layoutMode} scene-host--${shellMode}`}
+          >
             {activeRenderer}
           </div>
-          <div className={`overlay-shell overlay-shell--${layoutMode}`}>
+          <div
+            className={`overlay-shell overlay-shell--${layoutMode} overlay-shell--${shellMode}`}
+          >
             <button
               aria-controls="left-overlay-rail"
+              aria-label="Open status rail"
               aria-expanded={leftRailVisible}
               className="overlay-tab overlay-tab--left"
               onClick={handleOpenLeftRail}
               type="button"
             >
-              <span className="overlay-tab__label">Status</span>
-              <small>{compactStatusLabel}</small>
+              <span className="overlay-tab__glyph">
+                <RailTriggerIcon side="left" />
+              </span>
             </button>
             <button
               aria-controls="right-overlay-rail"
+              aria-label="Open control rail"
               aria-expanded={rightRailVisible}
               className="overlay-tab overlay-tab--right"
               onClick={handleOpenRightRail}
               type="button"
             >
-              <span className="overlay-tab__label">Controls</span>
-              <small>{viewerMode === 'geo' ? 'Geo' : 'Headway'}</small>
+              <span className="overlay-tab__glyph">
+                <RailTriggerIcon side="right" />
+              </span>
             </button>
 
             <aside
               className={`overlay-rail overlay-rail--left ${
-                leftRailVisible ? 'overlay-rail--open' : 'overlay-rail--collapsed'
+                leftRailVisible
+                  ? 'overlay-rail--open'
+                  : 'overlay-rail--collapsed'
               } ${railState.leftMinimized ? 'overlay-rail--minimized' : ''}`}
               id="left-overlay-rail"
             >
               <div className="overlay-rail__chrome">
                 <div className="overlay-rail__eyebrow">
-                  <span className="panel-kicker">Status rail</span>
-                  <span className="status-pill status-pill--axis">{compactStatusLabel}</span>
+                  <span className="overlay-rail__label-chip">Status</span>
+                  <span className="status-pill status-pill--axis">
+                    {compactStatusLabel}
+                  </span>
                 </div>
                 <button
-                  aria-label={layoutMode === 'monitor' ? 'Minimize status rail' : 'Close status rail'}
-                  className="text-button"
+                  aria-label={
+                    shellMode === 'dual-rail'
+                      ? 'Minimize status rail'
+                      : 'Close status rail'
+                  }
+                  className="rail-icon-button"
                   onClick={handleCloseLeftRail}
                   type="button"
                 >
-                  {layoutMode === 'monitor' ? 'Minimize' : 'Close'}
+                  <RailActionIcon
+                    action={shellMode === 'dual-rail' ? 'minimize' : 'close'}
+                  />
                 </button>
               </div>
               <div className="overlay-rail__scroll">{leftRailContent}</div>
@@ -1253,24 +1432,32 @@ function App() {
 
             <aside
               className={`overlay-rail overlay-rail--right ${
-                rightRailVisible ? 'overlay-rail--open' : 'overlay-rail--collapsed'
+                rightRailVisible
+                  ? 'overlay-rail--open'
+                  : 'overlay-rail--collapsed'
               } ${railState.rightMinimized ? 'overlay-rail--minimized' : ''}`}
               id="right-overlay-rail"
             >
               <div className="overlay-rail__chrome">
                 <div className="overlay-rail__eyebrow">
-                  <span className="panel-kicker">Control rail</span>
+                  <span className="overlay-rail__label-chip">Controls</span>
                   <span className="status-pill status-pill--axis">
                     {viewerMode === 'geo' ? 'Geo controls' : 'Headway controls'}
                   </span>
                 </div>
                 <button
-                  aria-label={layoutMode === 'monitor' ? 'Minimize control rail' : 'Close control rail'}
-                  className="text-button"
+                  aria-label={
+                    shellMode === 'dual-rail'
+                      ? 'Minimize control rail'
+                      : 'Close control rail'
+                  }
+                  className="rail-icon-button"
                   onClick={handleCloseRightRail}
                   type="button"
                 >
-                  {layoutMode === 'monitor' ? 'Minimize' : 'Close'}
+                  <RailActionIcon
+                    action={shellMode === 'dual-rail' ? 'minimize' : 'close'}
+                  />
                 </button>
               </div>
               <div className="overlay-rail__scroll">{rightRailContent}</div>
@@ -1282,7 +1469,8 @@ function App() {
       {!isAnimationWorkspaceOpen && viewerMode === 'geo' ? (
         <CountryCompareOverlay
           compareModeState={compareModeState}
-          onClear={handleClearPinnedCountry}
+          onExit={handleExitCompareMode}
+          onRelease={handleClearPinnedCountry}
           selectedCountry={selectedCountry}
           view={view}
         />
