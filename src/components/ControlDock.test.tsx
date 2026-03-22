@@ -9,43 +9,50 @@ type ControlDockProps = ComponentProps<typeof ControlDock>;
 
 const createProps = (
   overrides: Partial<ControlDockProps> = {},
-): ControlDockProps => ({
-  quality: 'balanced',
-  headwayLayerVisibility: {
-    roads: true,
-    parks: true,
-    buildings: true,
-    placeLabels: true,
-    pois: true,
-  },
-  headwayLayoutLook: 'mission',
-  axisLockMode: 'free',
-  compareModeState: 'off',
-  viewerMode: 'geo',
-  presets: VIEWER_PRESETS,
-  animationDraft: createDefaultAnimationTimeline('geo'),
-  onModeChange: vi.fn(),
-  onQualityChange: vi.fn(),
-  onHeadwayLayoutLookChange: vi.fn(),
-  onHeadwayLayerToggle: vi.fn(),
-  onToggleAxisLock: vi.fn(),
-  onAxisReset: vi.fn(),
-  onToggleCompare: vi.fn(),
-  onPresetSelect: vi.fn(),
-  onOpenAnimationWorkspace: vi.fn(),
-  onPlayAnimation: vi.fn(),
-  onShare: vi.fn(async () => {}),
-  onFullscreen: vi.fn(async () => {}),
-  onHelp: vi.fn(),
-  onToggleFrozen: vi.fn(),
-  onToggleBorders: vi.fn(),
-  shareLabel: 'Copy share link',
-  isFrozen: false,
-  showBorders: false,
-  isSceneAvailable: true,
-  layoutMode: 'monitor',
-  ...overrides,
-});
+): ControlDockProps => {
+  const base: ControlDockProps = {
+    quality: 'balanced',
+    headwayLayerVisibility: {
+      roads: true,
+      parks: true,
+      buildings: true,
+      placeLabels: true,
+      pois: true,
+    },
+    headwayLayoutLook: 'mission',
+    axisLockMode: 'free',
+    compareModeState: 'off',
+    viewerMode: 'geo',
+    bordersProfileId: 'gdp',
+    presets: VIEWER_PRESETS,
+    animationDraft: createDefaultAnimationTimeline('geo'),
+    onModeChange: vi.fn(),
+    onBordersProfileChange: vi.fn(),
+    onQualityChange: vi.fn(),
+    onHeadwayLayoutLookChange: vi.fn(),
+    onHeadwayLayerToggle: vi.fn(),
+    onToggleAxisLock: vi.fn(),
+    onAxisReset: vi.fn(),
+    onToggleCompare: vi.fn(),
+    onPresetSelect: vi.fn(),
+    onOpenAnimationWorkspace: vi.fn(),
+    onPlayAnimation: vi.fn(),
+    onShare: vi.fn(async () => {}),
+    onFullscreen: vi.fn(async () => {}),
+    onHelp: vi.fn(),
+    onToggleFrozen: vi.fn(),
+    onToggleBorders: vi.fn(),
+    onToggleBordersPinpoints: vi.fn(),
+    shareLabel: 'Copy share link',
+    isFrozen: false,
+    showBorders: false,
+    showBordersPinpoints: true,
+    isSceneAvailable: true,
+    layoutMode: 'monitor',
+  };
+
+  return { ...base, ...overrides };
+};
 
 describe('ControlDock', () => {
   it('starts with motion, animation, and viewpoints expanded on monitor', () => {
@@ -56,6 +63,9 @@ describe('ControlDock', () => {
     ).toHaveAttribute('aria-expanded', 'true');
     expect(
       screen.getByRole('button', { name: /toggle layers section/i }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('button', { name: /toggle profiles section/i }),
     ).toHaveAttribute('aria-expanded', 'true');
     expect(
       screen.getByRole('button', { name: /toggle layout section/i }),
@@ -89,6 +99,9 @@ describe('ControlDock', () => {
       screen.getByRole('button', { name: /toggle layers section/i }),
     ).toHaveAttribute('aria-expanded', 'false');
     expect(
+      screen.getByRole('button', { name: /toggle profiles section/i }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(
       screen.getByRole('button', { name: /toggle layout section/i }),
     ).toHaveAttribute('aria-expanded', 'false');
     expect(
@@ -109,6 +122,9 @@ describe('ControlDock', () => {
       screen.getByRole('button', { name: /toggle layers section/i }),
     );
     fireEvent.click(
+      screen.getByRole('button', { name: /toggle profiles section/i }),
+    );
+    fireEvent.click(
       screen.getByRole('button', { name: /toggle layout section/i }),
     );
     fireEvent.click(
@@ -117,6 +133,7 @@ describe('ControlDock', () => {
 
     expect(screen.getByText(/geo timeline/i)).toBeInTheDocument();
     expect(screen.getByText(/layer toggles are available in headway mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/profiles are available in borders mode/i)).toBeInTheDocument();
     expect(screen.getByText(/layout looks are available in headway mode/i)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /open editor/i }),
@@ -141,6 +158,9 @@ describe('ControlDock', () => {
     );
     fireEvent.click(
       screen.getByRole('button', { name: /toggle layers section/i }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /toggle profiles section/i }),
     );
     fireEvent.click(
       screen.getByRole('button', { name: /toggle layout section/i }),
@@ -212,5 +232,50 @@ describe('ControlDock', () => {
 
     expect(onHeadwayLayerToggle).toHaveBeenCalledWith('roads');
     expect(onHeadwayLayerToggle).toHaveBeenCalledWith('parks');
+  });
+
+  it('shows Borders profile controls and pinpoints toggle in Borders mode', () => {
+    const onBordersProfileChange = vi.fn();
+    const onToggleBordersPinpoints = vi.fn();
+
+    render(
+      <ControlDock
+        {...createProps({
+          viewerMode: 'borders',
+          bordersProfileId: 'population',
+          onBordersProfileChange,
+          onToggleBordersPinpoints,
+          showBordersPinpoints: false,
+        })}
+      />,
+    );
+
+    const motionSection = screen.getByRole('region', { name: /motion section/i });
+    const profilesSection = screen.getByRole('region', {
+      name: /profiles section/i,
+    });
+    const animationSection = screen.getByRole('region', {
+      name: /animation section/i,
+    });
+
+    expect(
+      within(motionSection).getByRole('button', { name: /^pinpoints$/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(animationSection).getByText(/borders animation is not part of v1/i),
+    ).toBeInTheDocument();
+    expect(
+      within(animationSection).getByRole('button', { name: /open editor/i }),
+    ).toBeDisabled();
+
+    fireEvent.click(
+      within(profilesSection).getByRole('button', { name: /gdp/i }),
+    );
+    fireEvent.click(
+      within(motionSection).getByRole('button', { name: /^pinpoints$/i }),
+    );
+
+    expect(onBordersProfileChange).toHaveBeenCalledWith('gdp');
+    expect(onToggleBordersPinpoints).toHaveBeenCalledTimes(1);
   });
 });

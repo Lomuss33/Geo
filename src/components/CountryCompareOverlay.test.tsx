@@ -53,6 +53,16 @@ describe('CountryCompareOverlay', () => {
     expect(
       screen.getByText(/click a visible country to pin its live outline/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('country-compare-armed').querySelector(
+        '.country-compare__actions',
+      ),
+    ).not.toBeNull();
+    expect(
+      screen.getByTestId('country-compare-armed').querySelector(
+        '.country-compare__armed-copy .country-compare__action',
+      ),
+    ).toBeNull();
 
     fireEvent.click(
       screen.getByRole('button', { name: /cancel compare mode/i }),
@@ -86,6 +96,16 @@ describe('CountryCompareOverlay', () => {
     expect(
       screen.getByText(/live compare outline\. drag and zoom stay active\./i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('country-compare-pinned').querySelector(
+        '.country-compare__actions',
+      ),
+    ).not.toBeNull();
+    expect(
+      screen.getByTestId('country-compare-pinned').querySelector(
+        '.country-compare__label-copy .country-compare__action',
+      ),
+    ).toBeNull();
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -122,6 +142,16 @@ describe('CountryCompareOverlay', () => {
     expect(
       screen.getByText(/pinned compare outline is off-screen\. drag back or exit compare\./i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('country-compare-fallback').querySelector(
+        '.country-compare__actions',
+      ),
+    ).not.toBeNull();
+    expect(
+      screen.getByTestId('country-compare-fallback').querySelector(
+        '.country-compare__label-copy .country-compare__action',
+      ),
+    ).toBeNull();
   });
 
   it('does not expose a full-screen clickable control surface while active', () => {

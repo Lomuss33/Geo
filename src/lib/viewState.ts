@@ -1,8 +1,14 @@
 import type {
+  BordersProfileId,
+  BordersViewState,
   GlobeViewState,
   HeadwayViewState,
   ViewerMode,
 } from '../state/viewerStore';
+import {
+  bordersFromGeo,
+  normalizeBordersView,
+} from './bordersBridge';
 import {
   DEFAULT_DISTANCE,
   DEFAULT_FOV,
@@ -18,12 +24,18 @@ export type RuntimeUrlMode = 'local-dev' | 'pages';
 type ViewerUrlOptions = {
   viewerMode?: ViewerMode;
   headwayView?: HeadwayViewState | null;
+  bordersView?: BordersViewState | null;
+  bordersProfileId?: BordersProfileId | null;
+  bordersFocusedCountryIso?: string | null;
 };
 
 type UrlState = {
   mode: ViewerMode;
   view: GlobeViewState;
   headwayView: HeadwayViewState;
+  bordersView: BordersViewState;
+  bordersProfileId: BordersProfileId;
+  bordersFocusedCountryIso: string | null;
 };
 
 const isFiniteTuple = (
@@ -159,9 +171,43 @@ export const deserializeHeadwayViewState = (
   });
 };
 
+export const serializeBordersViewState = (view: BordersViewState) => {
+  const normalized = normalizeBordersView(view);
+
+  return encodePayload({
+    c: normalized.center.map((value) => Number(value.toFixed(6))),
+    z: Number(normalized.zoom.toFixed(3)),
+    b: Number(normalized.bearing.toFixed(2)),
+    p: Number(normalized.pitch.toFixed(2)),
+  });
+};
+
+export const deserializeBordersViewState = (
+  encoded: string | null,
+): BordersViewState | null => {
+  const parsed = decodePayload<{
+    b?: number;
+    c?: [number, number];
+    p?: number;
+    z?: number;
+  }>(encoded);
+
+  if (!parsed) {
+    return null;
+  }
+
+  return normalizeBordersView({
+    center: parsed.c,
+    zoom: parsed.z,
+    bearing: parsed.b,
+    pitch: parsed.p,
+  });
+};
+
 export const readViewerModeFromUrl = () => {
   const url = new URL(window.location.href);
-  return url.searchParams.get('mode') === 'headway' ? 'headway' : 'geo';
+  const mode = url.searchParams.get('mode');
+  return mode === 'headway' || mode === 'borders' ? mode : 'geo';
 };
 
 export const readViewFromUrl = () => {
@@ -174,6 +220,23 @@ export const readHeadwayViewFromUrl = () => {
   return deserializeHeadwayViewState(url.searchParams.get('map'));
 };
 
+export const readBordersViewFromUrl = () => {
+  const url = new URL(window.location.href);
+  return deserializeBordersViewState(url.searchParams.get('map'));
+};
+
+export const readBordersProfileFromUrl = (): BordersProfileId => {
+  const url = new URL(window.location.href);
+  const profile = url.searchParams.get('profile');
+  return profile === 'population' || profile === 'hierarchy' ? profile : 'gdp';
+};
+
+export const readBordersFocusedCountryIsoFromUrl = () => {
+  const url = new URL(window.location.href);
+  const focusedCountryIso = url.searchParams.get('focus');
+  return focusedCountryIso ? focusedCountryIso.toUpperCase() : null;
+};
+
 export const readUrlState = (): UrlState => {
   const view = readViewFromUrl();
   const mode = readViewerModeFromUrl();
@@ -181,6 +244,9 @@ export const readUrlState = (): UrlState => {
     mode,
     view,
     headwayView: readHeadwayViewFromUrl() ?? headwayFromGeo(view),
+    bordersView: readBordersViewFromUrl() ?? bordersFromGeo(view),
+    bordersProfileId: readBordersProfileFromUrl(),
+    bordersFocusedCountryIso: readBordersFocusedCountryIsoFromUrl(),
   };
 };
 
@@ -199,8 +265,20 @@ export const buildViewUrlForMode = (
 
   if (viewerMode === 'headway' && options.headwayView) {
     url.searchParams.set('map', serializeHeadwayViewState(options.headwayView));
+    url.searchParams.delete('profile');
+    url.searchParams.delete('focus');
+  } else if (viewerMode === 'borders' && options.bordersView) {
+    url.searchParams.set('map', serializeBordersViewState(options.bordersView));
+    url.searchParams.set('profile', options.bordersProfileId ?? 'gdp');
+    if (options.bordersFocusedCountryIso) {
+      url.searchParams.set('focus', options.bordersFocusedCountryIso);
+    } else {
+      url.searchParams.delete('focus');
+    }
   } else {
     url.searchParams.delete('map');
+    url.searchParams.delete('profile');
+    url.searchParams.delete('focus');
   }
 
   return url.toString();

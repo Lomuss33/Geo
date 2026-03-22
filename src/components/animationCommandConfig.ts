@@ -1,4 +1,4 @@
-import type { AnimationCommandKey, ViewerMode } from '../state/viewerStore';
+import type { AnimationCommandKey, AnimationMode } from '../state/viewerStore';
 
 export type AnimationCommandOption = {
   command: AnimationCommandKey;
@@ -17,7 +17,7 @@ export const MOVE_COMMAND_OPTIONS: AnimationCommandOption[] = [
 ];
 
 export const ROTATE_COMMAND_OPTIONS = (
-  viewerMode: ViewerMode,
+  viewerMode: AnimationMode,
 ): AnimationCommandOption[] =>
   [
     { command: 'yaw-', label: 'Yaw -', shortLabel: 'Y-', group: 'rotate' },
@@ -52,18 +52,18 @@ export const ROTATE_COMMAND_OPTIONS = (
         ]),
   ] satisfies AnimationCommandOption[];
 
-export const getAnimationCommandOptions = (viewerMode: ViewerMode) => [
+export const getAnimationCommandOptions = (viewerMode: AnimationMode) => [
   ...MOVE_COMMAND_OPTIONS,
   ...ROTATE_COMMAND_OPTIONS(viewerMode),
 ];
 
 export const getAnimationCommandOption = (
-  viewerMode: ViewerMode,
+  viewerMode: AnimationMode,
   command: AnimationCommandKey,
 ) => getAnimationCommandOptions(viewerMode).find((option) => option.command === command);
 
 export const getAnimationAmountHint = (
-  viewerMode: ViewerMode,
+  viewerMode: AnimationMode,
   command: AnimationCommandKey,
 ) => {
   if (command.startsWith('fb')) {

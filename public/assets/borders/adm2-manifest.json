@@ -1,0 +1,725 @@
+{
+  "generatedAt": "2026-03-22T11:15:21.660Z",
+  "countries": [
+    {
+      "iso3": "AFG",
+      "featureCount": 398
+    },
+    {
+      "iso3": "AGO",
+      "featureCount": 158
+    },
+    {
+      "iso3": "ALB",
+      "featureCount": 37
+    },
+    {
+      "iso3": "ARG",
+      "featureCount": 525
+    },
+    {
+      "iso3": "ARM",
+      "featureCount": 39
+    },
+    {
+      "iso3": "AUS",
+      "featureCount": 547
+    },
+    {
+      "iso3": "AUT",
+      "featureCount": 94
+    },
+    {
+      "iso3": "AZE",
+      "featureCount": 79
+    },
+    {
+      "iso3": "BDI",
+      "featureCount": 119
+    },
+    {
+      "iso3": "BEL",
+      "featureCount": 11
+    },
+    {
+      "iso3": "BEN",
+      "featureCount": 77
+    },
+    {
+      "iso3": "BFA",
+      "featureCount": 45
+    },
+    {
+      "iso3": "BGD",
+      "featureCount": 64
+    },
+    {
+      "iso3": "BGR",
+      "featureCount": 265
+    },
+    {
+      "iso3": "BHS",
+      "featureCount": 33
+    },
+    {
+      "iso3": "BIH",
+      "featureCount": 12
+    },
+    {
+      "iso3": "BLR",
+      "featureCount": 118
+    },
+    {
+      "iso3": "BLZ",
+      "featureCount": 31
+    },
+    {
+      "iso3": "BOL",
+      "featureCount": 110
+    },
+    {
+      "iso3": "BRA",
+      "featureCount": 5570
+    },
+    {
+      "iso3": "BRN",
+      "featureCount": 38
+    },
+    {
+      "iso3": "BTN",
+      "featureCount": 205
+    },
+    {
+      "iso3": "BWA",
+      "featureCount": 25
+    },
+    {
+      "iso3": "CAF",
+      "featureCount": 72
+    },
+    {
+      "iso3": "CAN",
+      "featureCount": 76
+    },
+    {
+      "iso3": "CHE",
+      "featureCount": 169
+    },
+    {
+      "iso3": "CHL",
+      "featureCount": 56
+    },
+    {
+      "iso3": "CHN",
+      "featureCount": 2391
+    },
+    {
+      "iso3": "CIV",
+      "featureCount": 33
+    },
+    {
+      "iso3": "CMR",
+      "featureCount": 60
+    },
+    {
+      "iso3": "COD",
+      "featureCount": 189
+    },
+    {
+      "iso3": "COG",
+      "featureCount": 46
+    },
+    {
+      "iso3": "COL",
+      "featureCount": 1122
+    },
+    {
+      "iso3": "COM",
+      "featureCount": 17
+    },
+    {
+      "iso3": "CPV",
+      "featureCount": 32
+    },
+    {
+      "iso3": "CRI",
+      "featureCount": 83
+    },
+    {
+      "iso3": "CUB",
+      "featureCount": 168
+    },
+    {
+      "iso3": "CYP",
+      "featureCount": 610
+    },
+    {
+      "iso3": "CZE",
+      "featureCount": 77
+    },
+    {
+      "iso3": "DEU",
+      "featureCount": 38
+    },
+    {
+      "iso3": "DJI",
+      "featureCount": 11
+    },
+    {
+      "iso3": "DNK",
+      "featureCount": 98
+    },
+    {
+      "iso3": "DOM",
+      "featureCount": 155
+    },
+    {
+      "iso3": "DZA",
+      "featureCount": 48
+    },
+    {
+      "iso3": "ECU",
+      "featureCount": 224
+    },
+    {
+      "iso3": "EGY",
+      "featureCount": 365
+    },
+    {
+      "iso3": "ERI",
+      "featureCount": 58
+    },
+    {
+      "iso3": "ESP",
+      "featureCount": 52
+    },
+    {
+      "iso3": "EST",
+      "featureCount": 214
+    },
+    {
+      "iso3": "ETH",
+      "featureCount": 74
+    },
+    {
+      "iso3": "FIN",
+      "featureCount": 70
+    },
+    {
+      "iso3": "FJI",
+      "featureCount": 15
+    },
+    {
+      "iso3": "FRA",
+      "featureCount": 96
+    },
+    {
+      "iso3": "FSM",
+      "featureCount": 75
+    },
+    {
+      "iso3": "GAB",
+      "featureCount": 49
+    },
+    {
+      "iso3": "GBR",
+      "featureCount": 216
+    },
+    {
+      "iso3": "GEO",
+      "featureCount": 68
+    },
+    {
+      "iso3": "GHA",
+      "featureCount": 260
+    },
+    {
+      "iso3": "GIN",
+      "featureCount": 34
+    },
+    {
+      "iso3": "GMB",
+      "featureCount": 48
+    },
+    {
+      "iso3": "GNB",
+      "featureCount": 39
+    },
+    {
+      "iso3": "GNQ",
+      "featureCount": 28
+    },
+    {
+      "iso3": "GRC",
+      "featureCount": 14
+    },
+    {
+      "iso3": "GTM",
+      "featureCount": 342
+    },
+    {
+      "iso3": "GUM",
+      "featureCount": 19
+    },
+    {
+      "iso3": "GUY",
+      "featureCount": 27
+    },
+    {
+      "iso3": "HND",
+      "featureCount": 298
+    },
+    {
+      "iso3": "HRV",
+      "featureCount": 560
+    },
+    {
+      "iso3": "HTI",
+      "featureCount": 42
+    },
+    {
+      "iso3": "HUN",
+      "featureCount": 198
+    },
+    {
+      "iso3": "IDN",
+      "featureCount": 519
+    },
+    {
+      "iso3": "IND",
+      "featureCount": 735
+    },
+    {
+      "iso3": "IRL",
+      "featureCount": 166
+    },
+    {
+      "iso3": "IRN",
+      "featureCount": 432
+    },
+    {
+      "iso3": "IRQ",
+      "featureCount": 101
+    },
+    {
+      "iso3": "ISL",
+      "featureCount": 74
+    },
+    {
+      "iso3": "ISR",
+      "featureCount": 15
+    },
+    {
+      "iso3": "ITA",
+      "featureCount": 20
+    },
+    {
+      "iso3": "JAM",
+      "featureCount": 827
+    },
+    {
+      "iso3": "JOR",
+      "featureCount": 52
+    },
+    {
+      "iso3": "JPN",
+      "featureCount": 1742
+    },
+    {
+      "iso3": "KAZ",
+      "featureCount": 174
+    },
+    {
+      "iso3": "KEN",
+      "featureCount": 290
+    },
+    {
+      "iso3": "KGZ",
+      "featureCount": 41
+    },
+    {
+      "iso3": "KHM",
+      "featureCount": 197
+    },
+    {
+      "iso3": "KIR",
+      "featureCount": 24
+    },
+    {
+      "iso3": "KOR",
+      "featureCount": 228
+    },
+    {
+      "iso3": "KWT",
+      "featureCount": 137
+    },
+    {
+      "iso3": "LAO",
+      "featureCount": 148
+    },
+    {
+      "iso3": "LBN",
+      "featureCount": 26
+    },
+    {
+      "iso3": "LBR",
+      "featureCount": 136
+    },
+    {
+      "iso3": "LCA",
+      "featureCount": 547
+    },
+    {
+      "iso3": "LKA",
+      "featureCount": 25
+    },
+    {
+      "iso3": "LSO",
+      "featureCount": 78
+    },
+    {
+      "iso3": "LTU",
+      "featureCount": 60
+    },
+    {
+      "iso3": "LUX",
+      "featureCount": 105
+    },
+    {
+      "iso3": "LVA",
+      "featureCount": 589
+    },
+    {
+      "iso3": "MAR",
+      "featureCount": 75
+    },
+    {
+      "iso3": "MCO",
+      "featureCount": 9
+    },
+    {
+      "iso3": "MDG",
+      "featureCount": 119
+    },
+    {
+      "iso3": "MDV",
+      "featureCount": 21
+    },
+    {
+      "iso3": "MEX",
+      "featureCount": 2457
+    },
+    {
+      "iso3": "MKD",
+      "featureCount": 84
+    },
+    {
+      "iso3": "MLI",
+      "featureCount": 50
+    },
+    {
+      "iso3": "MMR",
+      "featureCount": 74
+    },
+    {
+      "iso3": "MNG",
+      "featureCount": 339
+    },
+    {
+      "iso3": "MNP",
+      "featureCount": 4
+    },
+    {
+      "iso3": "MOZ",
+      "featureCount": 159
+    },
+    {
+      "iso3": "MRT",
+      "featureCount": 57
+    },
+    {
+      "iso3": "MWI",
+      "featureCount": 28
+    },
+    {
+      "iso3": "MYS",
+      "featureCount": 159
+    },
+    {
+      "iso3": "NAM",
+      "featureCount": 109
+    },
+    {
+      "iso3": "NER",
+      "featureCount": 67
+    },
+    {
+      "iso3": "NGA",
+      "featureCount": 774
+    },
+    {
+      "iso3": "NIC",
+      "featureCount": 153
+    },
+    {
+      "iso3": "NLD",
+      "featureCount": 344
+    },
+    {
+      "iso3": "NOR",
+      "featureCount": 431
+    },
+    {
+      "iso3": "NPL",
+      "featureCount": 75
+    },
+    {
+      "iso3": "NZL",
+      "featureCount": 88
+    },
+    {
+      "iso3": "OMN",
+      "featureCount": 61
+    },
+    {
+      "iso3": "PAK",
+      "featureCount": 126
+    },
+    {
+      "iso3": "PAN",
+      "featureCount": 76
+    },
+    {
+      "iso3": "PER",
+      "featureCount": 196
+    },
+    {
+      "iso3": "PHL",
+      "featureCount": 87
+    },
+    {
+      "iso3": "PLW",
+      "featureCount": 77
+    },
+    {
+      "iso3": "PNG",
+      "featureCount": 87
+    },
+    {
+      "iso3": "POL",
+      "featureCount": 380
+    },
+    {
+      "iso3": "PRI",
+      "featureCount": 78
+    },
+    {
+      "iso3": "PRK",
+      "featureCount": 179
+    },
+    {
+      "iso3": "PRT",
+      "featureCount": 311
+    },
+    {
+      "iso3": "PRY",
+      "featureCount": 247
+    },
+    {
+      "iso3": "PSE",
+      "featureCount": 16
+    },
+    {
+      "iso3": "QAT",
+      "featureCount": 79
+    },
+    {
+      "iso3": "ROU",
+      "featureCount": 3235
+    },
+    {
+      "iso3": "RUS",
+      "featureCount": 2327
+    },
+    {
+      "iso3": "RWA",
+      "featureCount": 30
+    },
+    {
+      "iso3": "SAU",
+      "featureCount": 147
+    },
+    {
+      "iso3": "SDN",
+      "featureCount": 189
+    },
+    {
+      "iso3": "SEN",
+      "featureCount": 45
+    },
+    {
+      "iso3": "SGP",
+      "featureCount": 55
+    },
+    {
+      "iso3": "SLB",
+      "featureCount": 50
+    },
+    {
+      "iso3": "SLE",
+      "featureCount": 14
+    },
+    {
+      "iso3": "SLV",
+      "featureCount": 272
+    },
+    {
+      "iso3": "SOM",
+      "featureCount": 118
+    },
+    {
+      "iso3": "SRB",
+      "featureCount": 145
+    },
+    {
+      "iso3": "SSD",
+      "featureCount": 78
+    },
+    {
+      "iso3": "STP",
+      "featureCount": 7
+    },
+    {
+      "iso3": "SUR",
+      "featureCount": 59
+    },
+    {
+      "iso3": "SVK",
+      "featureCount": 79
+    },
+    {
+      "iso3": "SVN",
+      "featureCount": 212
+    },
+    {
+      "iso3": "SWE",
+      "featureCount": 290
+    },
+    {
+      "iso3": "SWZ",
+      "featureCount": 53
+    },
+    {
+      "iso3": "SYC",
+      "featureCount": 8
+    },
+    {
+      "iso3": "SYR",
+      "featureCount": 61
+    },
+    {
+      "iso3": "TCD",
+      "featureCount": 70
+    },
+    {
+      "iso3": "TGO",
+      "featureCount": 37
+    },
+    {
+      "iso3": "THA",
+      "featureCount": 928
+    },
+    {
+      "iso3": "TJK",
+      "featureCount": 58
+    },
+    {
+      "iso3": "TKM",
+      "featureCount": 59
+    },
+    {
+      "iso3": "TLS",
+      "featureCount": 65
+    },
+    {
+      "iso3": "TON",
+      "featureCount": 23
+    },
+    {
+      "iso3": "TUN",
+      "featureCount": 264
+    },
+    {
+      "iso3": "TUR",
+      "featureCount": 973
+    },
+    {
+      "iso3": "TUV",
+      "featureCount": 34
+    },
+    {
+      "iso3": "TWN",
+      "featureCount": 368
+    },
+    {
+      "iso3": "TZA",
+      "featureCount": 170
+    },
+    {
+      "iso3": "UGA",
+      "featureCount": 151
+    },
+    {
+      "iso3": "UKR",
+      "featureCount": 495
+    },
+    {
+      "iso3": "URY",
+      "featureCount": 124
+    },
+    {
+      "iso3": "USA",
+      "featureCount": 3233
+    },
+    {
+      "iso3": "UZB",
+      "featureCount": 199
+    },
+    {
+      "iso3": "VEN",
+      "featureCount": 335
+    },
+    {
+      "iso3": "VNM",
+      "featureCount": 708
+    },
+    {
+      "iso3": "VUT",
+      "featureCount": 65
+    },
+    {
+      "iso3": "WSM",
+      "featureCount": 43
+    },
+    {
+      "iso3": "XKX",
+      "featureCount": 38
+    },
+    {
+      "iso3": "YEM",
+      "featureCount": 335
+    },
+    {
+      "iso3": "ZAF",
+      "featureCount": 52
+    },
+    {
+      "iso3": "ZMB",
+      "featureCount": 116
+    },
+    {
+      "iso3": "ZWE",
+      "featureCount": 91
+    }
+  ]
+}

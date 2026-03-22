@@ -2,11 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_VIEW } from './constants';
 import {
   buildViewUrlForMode,
+  deserializeBordersViewState,
   deserializeHeadwayViewState,
   deserializeViewState,
   normalizeInitialRuntimeUrl,
   normalizeRuntimeUrl,
   readUrlState,
+  serializeBordersViewState,
   serializeHeadwayViewState,
   serializeViewState,
   shouldLiveSyncViewUrl,
@@ -46,6 +48,22 @@ describe('view state serialization', () => {
     expect(decoded?.zoom).toBeCloseTo(2.45, 2);
     expect(decoded?.bearing).toBeCloseTo(24, 2);
     expect(decoded?.pitch).toBeCloseTo(12, 2);
+  });
+
+  it('round-trips a Borders map payload', () => {
+    const encoded = serializeBordersViewState({
+      center: [-74, 40.7],
+      zoom: 3.1,
+      bearing: 18,
+      pitch: 24,
+    });
+    const decoded = deserializeBordersViewState(encoded);
+
+    expect(decoded?.center[0]).toBeCloseTo(-74, 4);
+    expect(decoded?.center[1]).toBeCloseTo(40.7, 4);
+    expect(decoded?.zoom).toBeCloseTo(3.1, 2);
+    expect(decoded?.bearing).toBeCloseTo(18, 2);
+    expect(decoded?.pitch).toBeCloseTo(24, 2);
   });
 
   it('returns null for malformed payloads', () => {
@@ -104,6 +122,32 @@ describe('view state serialization', () => {
     expect(parsed.searchParams.get('map')).toMatch(/\S+/);
   });
 
+  it('builds Borders Pages URLs with mode, map state, profile, and focus', () => {
+    const url = buildViewUrlForMode(
+      DEFAULT_VIEW,
+      'pages',
+      'https://example.com/',
+      {
+        viewerMode: 'borders',
+        bordersView: {
+          center: [-96, 37.8],
+          zoom: 2.7,
+          bearing: 16,
+          pitch: 22,
+        },
+        bordersProfileId: 'population',
+        bordersFocusedCountryIso: 'USA',
+      },
+    );
+
+    const parsed = new URL(url);
+
+    expect(parsed.searchParams.get('mode')).toBe('borders');
+    expect(parsed.searchParams.get('map')).toMatch(/\S+/);
+    expect(parsed.searchParams.get('profile')).toBe('population');
+    expect(parsed.searchParams.get('focus')).toBe('USA');
+  });
+
   it('reads Headway mode state from the URL', () => {
     const map = serializeHeadwayViewState({
       center: [13, 52],
@@ -123,6 +167,29 @@ describe('view state serialization', () => {
     expect(state.mode).toBe('headway');
     expect(state.headwayView.center[0]).toBeCloseTo(13, 3);
     expect(state.headwayView.center[1]).toBeCloseTo(52, 3);
+  });
+
+  it('reads Borders mode state from the URL', () => {
+    const map = serializeBordersViewState({
+      center: [-96, 37.8],
+      zoom: 2.7,
+      bearing: 16,
+      pitch: 22,
+    });
+    const view = serializeViewState(DEFAULT_VIEW);
+    window.history.replaceState(
+      {},
+      '',
+      `/Geo/?mode=borders&view=${view}&map=${map}&profile=hierarchy&focus=usa`,
+    );
+
+    const state = readUrlState();
+
+    expect(state.mode).toBe('borders');
+    expect(state.bordersView.center[0]).toBeCloseTo(-96, 3);
+    expect(state.bordersView.center[1]).toBeCloseTo(37.8, 3);
+    expect(state.bordersProfileId).toBe('hierarchy');
+    expect(state.bordersFocusedCountryIso).toBe('USA');
   });
 
   it('disables live view sync in local-dev mode only', () => {

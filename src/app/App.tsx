@@ -12,6 +12,7 @@ import { ViewerShortcuts } from './ViewerShortcuts';
 import { AnimationPlaybackOverlay } from '../components/AnimationPlaybackOverlay';
 import { AnimationWorkspace } from '../components/AnimationWorkspace';
 import { BrandPanel } from '../components/BrandPanel';
+import { BordersLegend } from '../components/BordersLegend';
 import { ControlDock } from '../components/ControlDock';
 import { CountryCompareOverlay } from '../components/CountryCompareOverlay';
 import { HudPanel } from '../components/HudPanel';
@@ -39,8 +40,18 @@ import {
   VIEWER_PRESETS,
 } from '../lib/constants';
 import { clamp } from '../lib/math';
+import { bordersFromGeo, geoFromBorders } from '../lib/bordersBridge';
+import {
+  getBordersCountryName,
+  loadBordersCountryIndex,
+  type BordersCountryIndexRecord,
+} from '../lib/bordersData';
 import { geoFromHeadway, headwayFromGeo } from '../lib/modeBridge';
-import { resetGeoAxes, resetHeadwayAxes } from '../lib/navigation';
+import {
+  resetBordersAxes,
+  resetGeoAxes,
+  resetHeadwayAxes,
+} from '../lib/navigation';
 import { formatRendererTier } from '../lib/renderer';
 import {
   buildViewUrl,
@@ -48,9 +59,12 @@ import {
   updateUrlWithView,
 } from '../lib/viewState';
 import { GlobeCanvas } from '../scene/GlobeCanvas';
+import { BordersMap } from '../scene/BordersMap';
 import { HeadwayMap } from '../scene/HeadwayMap';
 import type {
+  AnimationMode,
   AnimationTimeline,
+  BordersViewState,
   GeoOverviewAnchor,
   HeadwayLayerVisibility,
   HeadwayLayoutLook,
@@ -182,7 +196,7 @@ function createRailState(input: {
 
   if (layoutMode !== 'mobile') {
     return {
-      leftOpen: false,
+      leftOpen: true,
       rightOpen: true,
       leftMinimized: false,
       rightMinimized: false,
@@ -206,6 +220,10 @@ function railStateReducer(state: RailState, action: RailAction): RailState {
         return { ...state, leftOpen: true, leftMinimized: false };
       }
 
+      if (action.layoutMode !== 'mobile') {
+        return { ...state, leftOpen: true, leftMinimized: false };
+      }
+
       return {
         ...state,
         leftOpen: true,
@@ -215,6 +233,10 @@ function railStateReducer(state: RailState, action: RailAction): RailState {
       };
     case 'open-right':
       if (action.shellMode === 'dual-rail') {
+        return { ...state, rightOpen: true, rightMinimized: false };
+      }
+
+      if (action.layoutMode !== 'mobile') {
         return { ...state, rightOpen: true, rightMinimized: false };
       }
 
@@ -242,6 +264,9 @@ function railStateReducer(state: RailState, action: RailAction): RailState {
   }
 }
 
+const resolveAnimationMode = (mode: ViewerMode): AnimationMode =>
+  mode === 'headway' ? 'headway' : 'geo';
+
 function App() {
   const viewportProfile = useViewportProfile();
   const {
@@ -253,11 +278,28 @@ function App() {
   const telemetry = useViewerStore((state) => state.telemetry);
   const viewerMode = useViewerStore((state) => state.viewerMode);
   const headwayView = useViewerStore((state) => state.headwayView);
+  const bordersView = useViewerStore((state) => state.bordersView);
   const headwayRenderState = useViewerStore(
     (state) => state.headwayRenderState,
   );
+  const bordersRenderState = useViewerStore(
+    (state) => state.bordersRenderState,
+  );
   const headwayErrorMessage = useViewerStore(
     (state) => state.headwayErrorMessage,
+  );
+  const bordersErrorMessage = useViewerStore(
+    (state) => state.bordersErrorMessage,
+  );
+  const bordersNoticeMessage = useViewerStore(
+    (state) => state.bordersNoticeMessage,
+  );
+  const bordersProfileId = useViewerStore((state) => state.bordersProfileId);
+  const bordersFocusedCountryIso = useViewerStore(
+    (state) => state.bordersFocusedCountryIso,
+  );
+  const bordersSelectedFeature = useViewerStore(
+    (state) => state.bordersSelectedFeature,
   );
   const quality = useViewerStore((state) => state.quality);
   const headwayLayoutLook = useViewerStore((state) => state.headwayLayoutLook);
@@ -284,6 +326,9 @@ function App() {
   const showOnboarding = useViewerStore((state) => state.showOnboarding);
   const isFrozen = useViewerStore((state) => state.isFrozen);
   const showBorders = useViewerStore((state) => state.showBorders);
+  const showBordersPinpoints = useViewerStore(
+    (state) => state.showBordersPinpoints,
+  );
   const activeAxis = useViewerStore((state) => state.activeAxis);
   const errorMessage = useViewerStore((state) => state.errorMessage);
   const view = useViewerStore((state) => state.view);
@@ -301,11 +346,30 @@ function App() {
   );
   const setViewerMode = useViewerStore((state) => state.setViewerMode);
   const setHeadwayView = useViewerStore((state) => state.setHeadwayView);
+  const setBordersView = useViewerStore((state) => state.setBordersView);
   const setHeadwayRenderState = useViewerStore(
     (state) => state.setHeadwayRenderState,
   );
+  const setBordersRenderState = useViewerStore(
+    (state) => state.setBordersRenderState,
+  );
   const setHeadwayErrorMessage = useViewerStore(
     (state) => state.setHeadwayErrorMessage,
+  );
+  const setBordersErrorMessage = useViewerStore(
+    (state) => state.setBordersErrorMessage,
+  );
+  const setBordersNoticeMessage = useViewerStore(
+    (state) => state.setBordersNoticeMessage,
+  );
+  const setBordersProfileId = useViewerStore(
+    (state) => state.setBordersProfileId,
+  );
+  const setBordersFocusedCountryIso = useViewerStore(
+    (state) => state.setBordersFocusedCountryIso,
+  );
+  const setBordersSelectedFeature = useViewerStore(
+    (state) => state.setBordersSelectedFeature,
   );
   const setQuality = useViewerStore((state) => state.setQuality);
   const setHeadwayLayoutLook = useViewerStore(
@@ -347,6 +411,9 @@ function App() {
   const toggleFrozen = useViewerStore((state) => state.toggleFrozen);
   const toggleAxisLock = useViewerStore((state) => state.toggleAxisLock);
   const toggleShowBorders = useViewerStore((state) => state.toggleShowBorders);
+  const toggleShowBordersPinpoints = useViewerStore(
+    (state) => state.toggleShowBordersPinpoints,
+  );
   const openAnimationWorkspace = useViewerStore(
     (state) => state.openAnimationWorkspace,
   );
@@ -376,11 +443,16 @@ function App() {
   const [shareLabel, setShareLabel] = useState('Copy share link');
   const [geoCanvasKey, setGeoCanvasKey] = useState(0);
   const [headwayInstanceKey, setHeadwayInstanceKey] = useState(0);
+  const [bordersInstanceKey, setBordersInstanceKey] = useState(0);
+  const [bordersCountryIndex, setBordersCountryIndex] = useState<
+    BordersCountryIndexRecord[] | null
+  >(null);
   const [railState, dispatchRailState] = useReducer(
     railStateReducer,
     { shellMode, layoutMode },
     createRailState,
   );
+  const hasInitializedNonMobileRailsRef = useRef(false);
   const recoveryTimerRef = useRef<number | null>(null);
   const contextRecoveryTimerRef = useRef<number | null>(null);
   const liveSyncViewUrl = useMemo(() => shouldLiveSyncViewUrl(), []);
@@ -454,7 +526,9 @@ function App() {
 
   useEffect(() => {
     loadAnimationDraft(
-      readStoredAnimationDraft(useViewerStore.getState().viewerMode),
+      readStoredAnimationDraft(
+        resolveAnimationMode(useViewerStore.getState().viewerMode),
+      ),
     );
   }, [loadAnimationDraft]);
 
@@ -509,11 +583,61 @@ function App() {
   }, [layoutMode]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    loadBordersCountryIndex()
+      .then((countryIndex) => {
+        if (!cancelled) {
+          setBordersCountryIndex(countryIndex);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBordersCountryIndex(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     dispatchRailState({ type: 'sync-layout', shellMode, layoutMode });
   }, [layoutMode, shellMode]);
 
+  useEffect(() => {
+    hasInitializedNonMobileRailsRef.current = false;
+  }, [layoutMode, shellMode]);
+
+  useEffect(() => {
+    if (layoutMode === 'mobile' || showOnboarding) {
+      return;
+    }
+
+    if (hasInitializedNonMobileRailsRef.current) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      dispatchRailState({ type: 'sync-layout', shellMode, layoutMode });
+      hasInitializedNonMobileRailsRef.current = true;
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [layoutMode, shellMode, showOnboarding]);
+
   const syncCurrentUrl = useCallback(
-    (nextMode: ViewerMode, nextView = view, nextHeadwayView = headwayView) => {
+    (
+      nextMode: ViewerMode,
+      nextView = view,
+      nextHeadwayView = headwayView,
+      nextBordersView = bordersView,
+      nextBordersProfileId = bordersProfileId,
+      nextBordersFocusedCountryIso = bordersFocusedCountryIso,
+    ) => {
       if (!liveSyncViewUrl) {
         return;
       }
@@ -521,9 +645,21 @@ function App() {
       updateUrlWithView(nextView, {
         viewerMode: nextMode,
         headwayView: nextMode === 'headway' ? nextHeadwayView : null,
+        bordersView: nextMode === 'borders' ? nextBordersView : null,
+        bordersProfileId:
+          nextMode === 'borders' ? nextBordersProfileId : null,
+        bordersFocusedCountryIso:
+          nextMode === 'borders' ? nextBordersFocusedCountryIso : null,
       });
     },
-    [headwayView, liveSyncViewUrl, view],
+    [
+      bordersFocusedCountryIso,
+      bordersProfileId,
+      bordersView,
+      headwayView,
+      liveSyncViewUrl,
+      view,
+    ],
   );
 
   const commitAnimationPreview = useCallback(
@@ -545,6 +681,11 @@ function App() {
       }
     },
     [applyImmediateView, setHeadwayView, syncCurrentUrl],
+  );
+
+  const bordersFocusedCountryName = useMemo(
+    () => getBordersCountryName(bordersCountryIndex, bordersFocusedCountryIso),
+    [bordersCountryIndex, bordersFocusedCountryIso],
   );
 
   const openDraftWorkspace = useCallback(
@@ -603,7 +744,7 @@ function App() {
   ]);
 
   const loadDraftForMode = (
-    mode: ViewerMode,
+    mode: AnimationMode,
     draftOverride?: AnimationTimeline,
   ) => {
     loadAnimationDraft(draftOverride ?? readStoredAnimationDraft(mode));
@@ -622,9 +763,15 @@ function App() {
   };
 
   const shareView = async () => {
-    const url = buildViewUrl(view, window.location.href, {
+    const shareGeoView =
+      viewerMode === 'borders' ? geoFromBorders(bordersView) : view;
+    const url = buildViewUrl(shareGeoView, window.location.href, {
       viewerMode,
       headwayView: viewerMode === 'headway' ? headwayView : null,
+      bordersView: viewerMode === 'borders' ? bordersView : null,
+      bordersProfileId: viewerMode === 'borders' ? bordersProfileId : null,
+      bordersFocusedCountryIso:
+        viewerMode === 'borders' ? bordersFocusedCountryIso : null,
     });
 
     try {
@@ -656,6 +803,23 @@ function App() {
       return;
     }
 
+    if (viewerMode === 'borders') {
+      const nextBordersView = bordersFromGeo(preset.state);
+      const nextGeoView = geoFromBorders(nextBordersView);
+
+      setBordersView(nextBordersView);
+      applyImmediateView(nextGeoView);
+      syncCurrentUrl(
+        'borders',
+        nextGeoView,
+        headwayView,
+        nextBordersView,
+        bordersProfileId,
+        bordersFocusedCountryIso,
+      );
+      return;
+    }
+
     const nextHeadwayView = headwayFromGeo(preset.state);
     const nextGeoView = geoFromHeadway(nextHeadwayView);
 
@@ -679,33 +843,55 @@ function App() {
     options?: { animationDraft?: AnimationTimeline },
   ) => {
     if (nextMode === viewerMode) {
-      if (options?.animationDraft) {
-        loadDraftForMode(nextMode, options.animationDraft);
+      if (options?.animationDraft && nextMode !== 'borders') {
+        loadDraftForMode(resolveAnimationMode(nextMode), options.animationDraft);
       }
       return;
     }
 
     disableCountryCompare();
 
+    if (nextMode === 'borders') {
+      clearGeoOverviewState();
+      setBordersErrorMessage(null);
+      setBordersNoticeMessage(null);
+      setBordersRenderState('loading');
+      setViewerMode('borders');
+      syncCurrentUrl(
+        'borders',
+        geoFromBorders(bordersView),
+        headwayView,
+        bordersView,
+        bordersProfileId,
+        bordersFocusedCountryIso,
+      );
+      return;
+    }
+
     if (nextMode === 'headway') {
       clearGeoOverviewState();
       const nextHeadwayView = headwayFromGeo(view);
       setHeadwayErrorMessage(null);
+      setBordersNoticeMessage(null);
       setHeadwayView(nextHeadwayView);
       setHeadwayRenderState('loading');
       setViewerMode('headway');
-      loadDraftForMode('headway', options?.animationDraft);
+      loadDraftForMode(resolveAnimationMode('headway'), options?.animationDraft);
       syncCurrentUrl('headway', view, nextHeadwayView);
       return;
     }
 
+    const nextGeoView =
+      viewerMode === 'borders' ? geoFromBorders(bordersView) : geoFromHeadway(headwayView);
+
     clearGeoOverviewState();
-    const nextGeoView = geoFromHeadway(headwayView);
     applyImmediateView(nextGeoView);
     setViewerMode('geo');
     setHeadwayRenderState('idle');
     setHeadwayErrorMessage(null);
-    loadDraftForMode('geo', options?.animationDraft);
+    setBordersRenderState('idle');
+    setBordersNoticeMessage(null);
+    loadDraftForMode(resolveAnimationMode('geo'), options?.animationDraft);
     syncCurrentUrl('geo', nextGeoView);
   };
 
@@ -714,7 +900,7 @@ function App() {
       return;
     }
 
-    if (viewerMode === 'headway') {
+    if (viewerMode !== 'geo') {
       setQuality(nextQuality);
       return;
     }
@@ -756,6 +942,22 @@ function App() {
     setHeadwayView(normalized);
     applyImmediateView(nextGeoView);
     syncCurrentUrl('headway', nextGeoView, normalized);
+  };
+
+  const applyBordersView = (nextView: BordersViewState) => {
+    const normalized = nextView;
+    const nextGeoView = geoFromBorders(normalized);
+
+    setBordersView(normalized);
+    applyImmediateView(nextGeoView);
+    syncCurrentUrl(
+      'borders',
+      nextGeoView,
+      headwayView,
+      normalized,
+      bordersProfileId,
+      bordersFocusedCountryIso,
+    );
   };
 
   const handleToggleCompareMode = () => {
@@ -838,6 +1040,11 @@ function App() {
       return;
     }
 
+    if (viewerMode === 'borders') {
+      applyBordersView(resetBordersAxes(bordersView));
+      return;
+    }
+
     applyHeadwayView(resetHeadwayAxes(headwayView));
   };
 
@@ -848,6 +1055,11 @@ function App() {
 
     if (viewerMode === 'headway' && nextMode === 'axis-lock') {
       applyHeadwayView(resetHeadwayAxes(headwayView));
+      return;
+    }
+
+    if (viewerMode === 'borders' && nextMode === 'axis-lock') {
+      applyBordersView(resetBordersAxes(bordersView));
     }
   };
 
@@ -859,6 +1071,11 @@ function App() {
     if (viewerMode === 'geo') {
       clearGeoOverviewState();
       animateToView(applyGeoConstraint(DEFAULT_VIEW, { anchor: null }));
+      return;
+    }
+
+    if (viewerMode === 'borders') {
+      applyBordersView(bordersFromGeo(DEFAULT_VIEW));
       return;
     }
 
@@ -1012,7 +1229,97 @@ function App() {
     setHeadwayInstanceKey((key) => key + 1);
   };
 
+  const handleBordersLoading = () => {
+    setBordersErrorMessage(null);
+    setBordersNoticeMessage(null);
+    setBordersRenderState('loading');
+  };
+
+  const handleBordersReady = () => {
+    setBordersErrorMessage(null);
+    setBordersNoticeMessage(null);
+    setBordersRenderState('ready');
+    syncCurrentUrl(
+      'borders',
+      geoFromBorders(bordersView),
+      headwayView,
+      bordersView,
+      bordersProfileId,
+      bordersFocusedCountryIso,
+    );
+  };
+
+  const handleBordersError = (message: string) => {
+    setBordersNoticeMessage(null);
+    setBordersErrorMessage(message);
+    setBordersRenderState('error');
+  };
+
+  const handleBordersNotice = (message: string | null) => {
+    setBordersNoticeMessage(message);
+  };
+
+  const handleBordersViewChange = (nextView: BordersViewState) => {
+    const normalized =
+      axisLockMode === 'axis-lock' ? resetBordersAxes(nextView) : nextView;
+    const nextGeoView = geoFromBorders(normalized);
+
+    setBordersView(normalized);
+    applyImmediateView(nextGeoView);
+    syncCurrentUrl(
+      'borders',
+      nextGeoView,
+      headwayView,
+      normalized,
+      bordersProfileId,
+      bordersFocusedCountryIso,
+    );
+  };
+
+  const handleBordersFocusCountry = (iso3: string | null) => {
+    setBordersFocusedCountryIso(iso3);
+    if (!iso3 || bordersSelectedFeature?.iso3 !== iso3) {
+      setBordersSelectedFeature(null);
+    }
+    syncCurrentUrl(
+      'borders',
+      geoFromBorders(bordersView),
+      headwayView,
+      bordersView,
+      bordersProfileId,
+      iso3,
+    );
+  };
+
+  const handleBordersSelectFeature = (
+    nextFeature: typeof bordersSelectedFeature,
+  ) => {
+    setBordersSelectedFeature(nextFeature);
+    if (nextFeature && nextFeature.iso3 !== bordersFocusedCountryIso) {
+      setBordersFocusedCountryIso(nextFeature.iso3);
+      syncCurrentUrl(
+        'borders',
+        geoFromBorders(bordersView),
+        headwayView,
+        bordersView,
+        bordersProfileId,
+        nextFeature.iso3,
+      );
+    }
+  };
+
+  const retryBorders = () => {
+    setBordersErrorMessage(null);
+    setBordersNoticeMessage(null);
+    setBordersRenderState('loading');
+    setBordersInstanceKey((key) => key + 1);
+  };
+
   const titleMessage = useMemo(() => {
+    if (viewerMode === 'borders' && bordersRenderState === 'error') {
+      return 'Borders offline';
+    }
+
     if (viewerMode === 'headway' && headwayRenderState === 'error') {
       return 'Headway offline';
     }
@@ -1030,24 +1337,38 @@ function App() {
     }
 
     return '';
-  }, [headwayRenderState, loadState, renderState, viewerMode]);
+  }, [bordersRenderState, headwayRenderState, loadState, renderState, viewerMode]);
 
   const isSceneAvailable =
     viewerMode === 'geo'
       ? renderState !== 'failed'
-      : headwayRenderState !== 'error';
+      : viewerMode === 'headway'
+        ? headwayRenderState !== 'error'
+        : bordersRenderState !== 'error';
   const isAnimationWorkspaceOpen = animationSession.workspaceOpen;
   const isAnimationPlaying = animationSession.phase === 'playing';
   const canPlayAnimation =
-    isSceneAvailable && !isFrozen && canPlayAnimationTimeline(animationDraft);
+    viewerMode !== 'borders' &&
+    isSceneAvailable &&
+    !isFrozen &&
+    canPlayAnimationTimeline(animationDraft);
 
   const handleClearAnimationDraft = () => {
-    loadDraftForMode(viewerMode, createDefaultAnimationTimeline(viewerMode));
+    if (viewerMode === 'borders') {
+      return;
+    }
+
+    const animationMode = resolveAnimationMode(viewerMode);
+    loadDraftForMode(animationMode, createDefaultAnimationTimeline(animationMode));
     setAnimationImportError(null);
     setAnimationPlayhead(0);
   };
 
   const handleOpenAnimationWorkspace = () => {
+    if (viewerMode === 'borders') {
+      return;
+    }
+
     setAnimationImportError(null);
     openDraftWorkspace(animationDraft, 0);
   };
@@ -1063,7 +1384,7 @@ function App() {
     setAnimationImportHex(serializeAnimationTimeline(imported));
     setAnimationImportError(null);
 
-    if (imported.mode === viewerMode) {
+    if (viewerMode !== 'borders' && imported.mode === viewerMode) {
       loadAnimationDraft(imported);
       setAnimationPlayhead(0);
       return;
@@ -1083,7 +1404,10 @@ function App() {
     }
 
     disableCountryCompare();
-    const nextGeoView = geoFromHeadway(headwayView);
+    const nextGeoView =
+      viewerMode === 'borders'
+        ? geoFromBorders(bordersView)
+        : geoFromHeadway(headwayView);
     applyImmediateView(nextGeoView);
     setViewerMode('geo');
     setHeadwayRenderState('idle');
@@ -1094,7 +1418,7 @@ function App() {
   };
 
   const handlePlayAnimationFromDock = () => {
-    if (!canPlayAnimation) {
+    if (viewerMode === 'borders' || !canPlayAnimation) {
       return;
     }
 
@@ -1107,7 +1431,7 @@ function App() {
   };
 
   const handlePlayAnimationFromWorkspace = () => {
-    if (!canPlayAnimation) {
+    if (viewerMode === 'borders' || !canPlayAnimation) {
       return;
     }
 
@@ -1140,7 +1464,8 @@ function App() {
 
     if (
       (viewerMode === 'geo' && renderState !== 'ready') ||
-      (viewerMode === 'headway' && headwayRenderState === 'error')
+      (viewerMode === 'headway' && headwayRenderState === 'error') ||
+      viewerMode === 'borders'
     ) {
       closeAnimationWorkspace();
     }
@@ -1154,10 +1479,16 @@ function App() {
 
   const warningCard = ((viewerMode === 'geo' &&
     (renderState === 'failed' || loadState === 'error')) ||
-    (viewerMode === 'headway' && headwayRenderState === 'error')) && (
+    (viewerMode === 'headway' && headwayRenderState === 'error') ||
+    (viewerMode === 'borders' && bordersRenderState === 'error')) && (
     <section className="hud-card hud-card--warning" role="status">
       <span className="panel-kicker">{titleMessage}</span>
-      {viewerMode === 'headway' ? (
+      {viewerMode === 'borders' ? (
+        <p>
+          {bordersErrorMessage ??
+            'The Borders atlas could not load its local thematic assets.'}
+        </p>
+      ) : viewerMode === 'headway' ? (
         <p>
           {headwayErrorMessage ??
             'The Headway basemap is currently unavailable.'}
@@ -1210,7 +1541,7 @@ function App() {
         onRendererReady={handleRendererReady}
         onRendererFailed={handleRendererFailed}
       />
-    ) : (
+    ) : viewerMode === 'headway' ? (
       <HeadwayMap
         axisLockMode={axisLockMode}
         headwayLayerVisibility={headwayLayerVisibility}
@@ -1226,10 +1557,36 @@ function App() {
         onReady={handleHeadwayReady}
         onViewChange={handleHeadwayViewChange}
       />
+    ) : (
+      <BordersMap
+        axisLockMode={axisLockMode}
+        focusedCountryIso={bordersFocusedCountryIso}
+        isFrozen={isFrozen}
+        key={bordersInstanceKey}
+        onError={handleBordersError}
+        onFocusCountry={handleBordersFocusCountry}
+        onLoading={handleBordersLoading}
+        onNotice={handleBordersNotice}
+        onReady={handleBordersReady}
+        onSelectFeature={handleBordersSelectFeature}
+        onViewChange={handleBordersViewChange}
+        profileId={bordersProfileId}
+        quality={quality}
+        selectedFeature={bordersSelectedFeature}
+        shellMode={shellMode}
+        showPinpoints={showBordersPinpoints}
+        view={bordersView}
+      />
     );
 
   const compactStatusLabel =
-    viewerMode === 'headway'
+    viewerMode === 'borders'
+      ? bordersRenderState === 'error'
+        ? 'Borders offline'
+        : isFrozen
+          ? 'Borders paused'
+          : 'Borders atlas'
+      : viewerMode === 'headway'
       ? headwayRenderState === 'error'
         ? 'Headway offline'
         : 'Headway live'
@@ -1272,6 +1629,14 @@ function App() {
         telemetry={telemetry}
         activeAxis={activeAxis}
         axisLockMode={axisLockMode}
+        bordersErrorMessage={bordersErrorMessage}
+        bordersFocusedCountryIso={bordersFocusedCountryIso}
+        bordersFocusedCountryName={bordersFocusedCountryName}
+        bordersNoticeMessage={bordersNoticeMessage}
+        bordersProfileId={bordersProfileId}
+        bordersRenderState={bordersRenderState}
+        bordersSelectedFeature={bordersSelectedFeature}
+        bordersView={bordersView}
         compareModeState={compareModeState}
         headwayRenderState={headwayRenderState}
         headwayView={headwayView}
@@ -1281,6 +1646,14 @@ function App() {
         selectedCountry={selectedCountry}
         viewerMode={viewerMode}
       />
+      {viewerMode === 'borders' && bordersRenderState !== 'error' ? (
+        <BordersLegend
+          focusedCountryIso={bordersFocusedCountryIso}
+          focusedCountryName={bordersFocusedCountryName}
+          noticeMessage={bordersNoticeMessage}
+          profileId={bordersProfileId}
+        />
+      ) : null}
       {warningCard}
     </>
   );
@@ -1289,11 +1662,23 @@ function App() {
     <ControlDock
       animationDraft={animationDraft}
       axisLockMode={axisLockMode}
+      bordersProfileId={bordersProfileId}
       compareModeState={compareModeState}
       headwayLayerVisibility={headwayLayerVisibility}
       headwayLayoutLook={headwayLayoutLook}
       isFrozen={isFrozen}
       isSceneAvailable={isSceneAvailable}
+      onBordersProfileChange={(profileId) => {
+        setBordersProfileId(profileId);
+        syncCurrentUrl(
+          'borders',
+          geoFromBorders(bordersView),
+          headwayView,
+          bordersView,
+          profileId,
+          bordersFocusedCountryIso,
+        );
+      }}
       onAxisReset={handleAxisReset}
       onFullscreen={toggleFullscreen}
       onHeadwayLayoutLookChange={setHeadwayLayoutLook}
@@ -1311,12 +1696,14 @@ function App() {
       onShare={shareView}
       onToggleAxisLock={handleToggleAxisLock}
       onToggleBorders={toggleShowBorders}
+      onToggleBordersPinpoints={toggleShowBordersPinpoints}
       onToggleCompare={handleToggleCompareMode}
       onToggleFrozen={toggleFrozen}
       presets={VIEWER_PRESETS}
       quality={quality}
       shareLabel={shareLabel}
       showBorders={showBorders}
+      showBordersPinpoints={showBordersPinpoints}
       layoutMode={layoutMode}
       viewerMode={viewerMode}
     />
@@ -1339,7 +1726,7 @@ function App() {
             draft={animationDraft}
             importError={animationImportError}
             importHex={animationImportHex}
-            key={viewerMode}
+            key={resolveAnimationMode(viewerMode)}
             onClearDraft={handleClearAnimationDraft}
             onClose={closeWorkspaceWithPreview}
             onDraftChange={setAnimationDraft}
@@ -1351,7 +1738,7 @@ function App() {
             phase={animationSession.phase}
             playheadMs={animationSession.playheadMs}
             workspaceMode={workspaceMode}
-            viewerMode={viewerMode}
+            viewerMode={resolveAnimationMode(viewerMode)}
           />
           {isAnimationPlaying ? (
             <AnimationPlaybackOverlay
@@ -1372,30 +1759,34 @@ function App() {
           <div
             className={`overlay-shell overlay-shell--${layoutMode} overlay-shell--${shellMode}`}
           >
-            <button
-              aria-controls="left-overlay-rail"
-              aria-label="Open status rail"
-              aria-expanded={leftRailVisible}
-              className="overlay-tab overlay-tab--left"
-              onClick={handleOpenLeftRail}
-              type="button"
-            >
-              <span className="overlay-tab__glyph">
-                <RailTriggerIcon side="left" />
-              </span>
-            </button>
-            <button
-              aria-controls="right-overlay-rail"
-              aria-label="Open control rail"
-              aria-expanded={rightRailVisible}
-              className="overlay-tab overlay-tab--right"
-              onClick={handleOpenRightRail}
-              type="button"
-            >
-              <span className="overlay-tab__glyph">
-                <RailTriggerIcon side="right" />
-              </span>
-            </button>
+            {!leftRailVisible ? (
+              <button
+                aria-controls="left-overlay-rail"
+                aria-label="Open status rail"
+                aria-expanded={leftRailVisible}
+                className="overlay-tab overlay-tab--left"
+                onClick={handleOpenLeftRail}
+                type="button"
+              >
+                <span className="overlay-tab__glyph">
+                  <RailTriggerIcon side="left" />
+                </span>
+              </button>
+            ) : null}
+            {!rightRailVisible ? (
+              <button
+                aria-controls="right-overlay-rail"
+                aria-label="Open control rail"
+                aria-expanded={rightRailVisible}
+                className="overlay-tab overlay-tab--right"
+                onClick={handleOpenRightRail}
+                type="button"
+              >
+                <span className="overlay-tab__glyph">
+                  <RailTriggerIcon side="right" />
+                </span>
+              </button>
+            ) : null}
 
             <aside
               className={`overlay-rail overlay-rail--left ${
@@ -1442,7 +1833,11 @@ function App() {
                 <div className="overlay-rail__eyebrow">
                   <span className="overlay-rail__label-chip">Controls</span>
                   <span className="status-pill status-pill--axis">
-                    {viewerMode === 'geo' ? 'Geo controls' : 'Headway controls'}
+                    {viewerMode === 'geo'
+                      ? 'Geo controls'
+                      : viewerMode === 'headway'
+                        ? 'Headway controls'
+                        : 'Borders controls'}
                   </span>
                 </div>
                 <button
@@ -1560,12 +1955,46 @@ function App() {
           </div>
         )}
 
+      {!isAnimationWorkspaceOpen &&
+        viewerMode === 'borders' &&
+        bordersRenderState === 'error' && (
+          <div className="scene-status-layer">
+            <SceneFallback
+              title="Borders view unavailable right now."
+              body={
+                bordersErrorMessage ??
+                'The Borders atlas could not load its local globe assets. You can retry it or switch back to Geo.'
+              }
+              action={
+                <div className="button-row">
+                  <button
+                    className="secondary-button"
+                    onClick={retryBorders}
+                    type="button"
+                  >
+                    Retry Borders
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => changeViewerMode('geo')}
+                    type="button"
+                  >
+                    Switch to Geo
+                  </button>
+                </div>
+              }
+            />
+          </div>
+        )}
+
       <ViewerShortcuts
+        bordersView={bordersView}
         headwayView={headwayView}
         isAnimationPlaying={isAnimationPlaying}
         isAnimationWorkspaceOpen={isAnimationWorkspaceOpen}
         isFrozen={isFrozen}
         isSceneAvailable={isSceneAvailable}
+        onApplyBordersView={applyBordersView}
         onApplyGeoView={applyGeoView}
         onApplyHeadwayView={applyHeadwayView}
         onAxisReset={handleAxisReset}

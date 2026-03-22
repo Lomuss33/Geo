@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client';
 import App from './app/App';
 import { createDefaultAnimationTimeline } from './lib/animation';
+import { bordersFromGeo, cloneBordersView, geoFromBorders } from './lib/bordersBridge';
 import { getResponsiveStartupGeoView } from './lib/camera';
 import { cloneView } from './lib/math';
 import { cloneHeadwayView, headwayFromGeo } from './lib/modeBridge';
@@ -13,8 +14,12 @@ normalizeInitialRuntimeUrl();
 
 const initialUrlState = readUrlState();
 const url = new URL(window.location.href);
+const initialGeoView =
+  initialUrlState.mode === 'borders' && url.searchParams.has('map')
+    ? geoFromBorders(initialUrlState.bordersView)
+    : initialUrlState.view;
 const responsiveStartupView = getResponsiveStartupGeoView(
-  initialUrlState.view,
+  initialGeoView,
   window.innerWidth,
   window.innerHeight,
 );
@@ -22,6 +27,10 @@ const responsiveStartupHeadwayView =
   initialUrlState.mode === 'headway' && url.searchParams.has('map')
     ? initialUrlState.headwayView
     : headwayFromGeo(responsiveStartupView);
+const responsiveStartupBordersView =
+  initialUrlState.mode === 'borders' && url.searchParams.has('map')
+    ? initialUrlState.bordersView
+    : bordersFromGeo(responsiveStartupView);
 
 useViewerStore.setState({
   view: cloneView(responsiveStartupView),
@@ -30,7 +39,17 @@ useViewerStore.setState({
   headwayView: cloneHeadwayView(responsiveStartupHeadwayView),
   headwayRenderState: initialUrlState.mode === 'headway' ? 'loading' : 'idle',
   headwayErrorMessage: null,
-  animationDraft: createDefaultAnimationTimeline(initialUrlState.mode),
+  bordersView: cloneBordersView(responsiveStartupBordersView),
+  bordersRenderState: initialUrlState.mode === 'borders' ? 'loading' : 'idle',
+  bordersErrorMessage: null,
+  bordersNoticeMessage: null,
+  bordersProfileId: initialUrlState.bordersProfileId,
+  bordersFocusedCountryIso: initialUrlState.bordersFocusedCountryIso,
+  bordersSelectedFeature: null,
+  showBordersPinpoints: true,
+  animationDraft: createDefaultAnimationTimeline(
+    initialUrlState.mode === 'headway' ? 'headway' : 'geo',
+  ),
 });
 
 ReactDOM.createRoot(document.getElementById('app') as HTMLElement).render(

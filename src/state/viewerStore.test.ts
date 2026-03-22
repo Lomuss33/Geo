@@ -11,6 +11,13 @@ const DEFAULT_HEADWAY_VIEW = {
   pitch: 0,
 };
 
+const DEFAULT_BORDERS_VIEW = {
+  center: [-28, 19.5] as [number, number],
+  zoom: 1.8,
+  bearing: 0,
+  pitch: 0,
+};
+
 describe('viewerStore', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -24,6 +31,14 @@ describe('viewerStore', () => {
       headwayView: { ...DEFAULT_HEADWAY_VIEW },
       headwayRenderState: 'idle',
       headwayErrorMessage: null,
+      bordersView: { ...DEFAULT_BORDERS_VIEW },
+      bordersRenderState: 'idle',
+      bordersErrorMessage: null,
+      bordersNoticeMessage: null,
+      bordersProfileId: 'gdp',
+      bordersFocusedCountryIso: null,
+      bordersSelectedFeature: null,
+      showBordersPinpoints: true,
       renderState: 'initializing',
       axisLockMode: 'free',
       compareModeState: 'off',
@@ -120,6 +135,41 @@ describe('viewerStore', () => {
     expect(useViewerStore.getState().viewerMode).toBe('headway');
     expect(useViewerStore.getState().headwayRenderState).toBe('loading');
     expect(useViewerStore.getState().headwayView.center).toEqual([13, 52]);
+  });
+
+  it('tracks Borders mode state independently from Geo and Headway', () => {
+    useViewerStore.getState().setViewerMode('borders');
+    useViewerStore.getState().setBordersRenderState('loading');
+    useViewerStore.getState().setBordersView({
+      center: [-96, 37.8],
+      zoom: 2.7,
+      bearing: 14,
+      pitch: 20,
+    });
+    useViewerStore.getState().setBordersProfileId('population');
+    useViewerStore.getState().setBordersFocusedCountryIso('USA');
+    useViewerStore.getState().setBordersNoticeMessage(
+      'USA has no local district pack.',
+    );
+    useViewerStore.getState().setBordersSelectedFeature({
+      iso3: 'USA',
+      admLevel: 2,
+      featureId: 'USA-DEMO-001',
+      name: 'Demo County',
+      metricValue: 12,
+    });
+    useViewerStore.getState().toggleShowBordersPinpoints();
+
+    const state = useViewerStore.getState();
+
+    expect(state.viewerMode).toBe('borders');
+    expect(state.bordersRenderState).toBe('loading');
+    expect(state.bordersView.center).toEqual([-96, 37.8]);
+    expect(state.bordersProfileId).toBe('population');
+    expect(state.bordersFocusedCountryIso).toBe('USA');
+    expect(state.bordersNoticeMessage).toBe('USA has no local district pack.');
+    expect(state.bordersSelectedFeature?.name).toBe('Demo County');
+    expect(state.showBordersPinpoints).toBe(false);
   });
 
   it('defaults Geo drag mode to free orbit and can toggle axis lock', () => {

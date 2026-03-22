@@ -142,14 +142,16 @@ export function CountryCompareOverlay({
             <strong>Compare armed</strong>
             <small>Click a visible country to pin its live outline.</small>
           </div>
-          <button
-            aria-label="Cancel compare mode"
-            className="country-compare__action country-compare__action--ghost"
-            onClick={onExit}
-            type="button"
-          >
-            Cancel
-          </button>
+          <div className="country-compare__actions">
+            <button
+              aria-label="Cancel compare mode"
+              className="country-compare__action country-compare__action--ghost"
+              onClick={onExit}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     );

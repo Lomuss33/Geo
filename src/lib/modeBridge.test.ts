@@ -24,8 +24,8 @@ describe('mode bridge', () => {
   it('translates a geo view into a centered Headway globe state', () => {
     const headway = headwayFromGeo(DEFAULT_VIEW);
 
-    expect(headway.center[0]).toBeCloseTo(-28, 1);
-    expect(headway.center[1]).toBeCloseTo(19.5, 1);
+    expect(headway.center[0]).toBeCloseTo(34.2, 1);
+    expect(headway.center[1]).toBeCloseTo(29.7, 1);
     expect(headway.zoom).toBeCloseTo(1.8, 2);
     expect(headway.bearing).toBe(0);
     expect(headway.pitch).toBe(0);

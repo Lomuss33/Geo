@@ -7,11 +7,17 @@ import { Vector3 } from 'three';
 import type { DirectionalLight, Group } from 'three';
 import { LOCAL_SUN_DIRECTION } from '../lib/constants';
 import {
+  getGeoActualVisibleEarthTopScreenY,
   getCloseZoomInfluence,
   getGeoActualSurfaceAngleDeg,
+  getGeoActualAxisScreenY,
+  getGeoAxisMarkerLocal,
+  getGeoCameraPose,
   getGeoCameraTransitionT,
   getGeoControlMode,
+  getGeoDesiredVisibleEarthTopScreenY,
   getGeoApparentScale,
+  getGeoDesiredAxisScreenY,
   getGeoDesiredSurfaceAngleDeg,
   getGeoEffectiveFov,
   getGeoLinearZoomT,
@@ -19,6 +25,7 @@ import {
   getGeoTargetApparentScale,
   getOverviewPinnedSurfaceDebug,
 } from '../lib/camera';
+import { quaternionFromArray } from '../lib/math';
 import {
   createRendererWithTiers,
   toRendererInitFailure,
@@ -174,6 +181,7 @@ function Scene({
       <Suspense fallback={null}>
         <group ref={globeGroup}>
           <Earth quality={quality} />
+          <GlobeAxisMarker />
           {showBorders ? <CountryBorders quality={quality} /> : null}
           <Atmosphere />
         </group>
@@ -189,6 +197,59 @@ function Scene({
         selectedCountryId={selectedCountryId}
       />
     </>
+  );
+}
+
+function GlobeAxisMarker() {
+  const markerRef = useRef<Group>(null);
+  const viewportHeight = useThree((state) => state.size.height);
+
+  useFrame(() => {
+    if (!markerRef.current) {
+      return;
+    }
+
+    const view = useViewerStore.getState().view;
+    const localPoint = getGeoAxisMarkerLocal(view);
+    const cameraPose = getGeoCameraPose(view);
+    const worldPoint = localPoint
+      .clone()
+      .applyQuaternion(quaternionFromArray(view.rotation));
+    const cameraToMarkerDistance = new Vector3(...cameraPose.position)
+      .distanceTo(worldPoint);
+    const markerRadiusPx = 5;
+    const markerScale =
+      viewportHeight <= 0
+        ? 0.006
+        : ((markerRadiusPx * 2) / viewportHeight) *
+          cameraToMarkerDistance *
+          Math.tan((cameraPose.effectiveFov * Math.PI) / 360);
+
+    markerRef.current.position.copy(localPoint);
+    markerRef.current.scale.setScalar(markerScale);
+  });
+
+  return (
+    <group ref={markerRef}>
+      <mesh renderOrder={5}>
+        <sphereGeometry args={[1, 18, 18]} />
+        <meshBasicMaterial
+          color="#39ff14"
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh renderOrder={4}>
+        <sphereGeometry args={[1.85, 18, 18]} />
+        <meshBasicMaterial
+          color="#8dff6a"
+          depthWrite={false}
+          opacity={0.28}
+          toneMapped={false}
+          transparent
+        />
+      </mesh>
+    </group>
   );
 }
 
@@ -218,6 +279,10 @@ function GeoOverviewDebugOverlay() {
   const linearZoomT = getGeoLinearZoomT(view.distance);
   const cameraTransitionT = getGeoCameraTransitionT(view.distance);
   const lookPitchDeg = getGeoLookPitchDeg(view.distance);
+  const desiredAxisScreenY = getGeoDesiredAxisScreenY(view.distance);
+  const desiredVisibleEarthTopScreenY = getGeoDesiredVisibleEarthTopScreenY(
+    view.distance,
+  );
   const desiredSurfaceAngleDeg = getGeoDesiredSurfaceAngleDeg(view.distance);
   const closeInfluence = getCloseZoomInfluence(view.distance);
   const effectiveFov = getGeoEffectiveFov(view);
@@ -228,7 +293,11 @@ function GeoOverviewDebugOverlay() {
   const targetApparentScale = getGeoTargetApparentScale(view);
   const controlMode = getGeoControlMode(view.distance);
   const pinnedSurfaceDebug = getOverviewPinnedSurfaceDebug(view);
-  const anchorScreenY = (1 - pinnedSurfaceDebug.anchorNdcY) / 2;
+  const actualAxisScreenY = getGeoActualAxisScreenY(
+    view,
+    pinnedSurfaceDebug.anchorNdcY,
+  );
+  const actualVisibleEarthTopScreenY = getGeoActualVisibleEarthTopScreenY(view);
   const actualSurfaceAngleDeg = getGeoActualSurfaceAngleDeg(
     view,
     pinnedSurfaceDebug.anchorNdcY,
@@ -266,10 +335,19 @@ function GeoOverviewDebugOverlay() {
         <div>linearZoomT: {linearZoomT.toFixed(3)}</div>
         <div>cameraTransitionT: {cameraTransitionT.toFixed(3)}</div>
         <div>controlMode: {controlMode}</div>
+        <div>desiredAxisScreenY: {desiredAxisScreenY.toFixed(3)}</div>
+        <div>actualAxisScreenY: {actualAxisScreenY.toFixed(3)}</div>
+        <div>
+          desiredVisibleEarthTop: {desiredVisibleEarthTopScreenY.toFixed(3)}
+        </div>
+        <div>
+          actualVisibleEarthTop: {actualVisibleEarthTopScreenY.toFixed(3)}
+        </div>
         <div>lookPitchDeg: {lookPitchDeg.toFixed(2)}</div>
         <div>desiredSurfaceAngle: {desiredSurfaceAngleDeg.toFixed(2)}</div>
         <div>actualSurfaceAngle: {actualSurfaceAngleDeg.toFixed(2)}</div>
-        <div>anchorY: {(anchorScreenY * 100).toFixed(1)}%</div>
+        <div>earthTopY: {(actualVisibleEarthTopScreenY * 100).toFixed(1)}%</div>
+        <div>axisY: {(actualAxisScreenY * 100).toFixed(1)}%</div>
         <div>anchorNdcY: {pinnedSurfaceDebug.anchorNdcY.toFixed(3)}</div>
         <div>
           pinnedNdcY: {pinnedSurfaceDebug.anchorNdcY.toFixed(3)}
@@ -316,7 +394,7 @@ function GeoOverviewDebugOverlay() {
         style={{
           position: 'absolute',
           insetInline: 0,
-          top: `${anchorScreenY * 100}%`,
+          top: `${actualVisibleEarthTopScreenY * 100}%`,
           borderTop: '1px dashed rgba(94, 213, 255, 0.5)',
         }}
       />
@@ -324,7 +402,7 @@ function GeoOverviewDebugOverlay() {
         style={{
           position: 'absolute',
           left: '50%',
-          top: `${anchorScreenY * 100}%`,
+          top: `${actualVisibleEarthTopScreenY * 100}%`,
           width: '2rem',
           height: 1,
           marginLeft: '-1rem',
@@ -335,7 +413,7 @@ function GeoOverviewDebugOverlay() {
         style={{
           position: 'absolute',
           left: '50%',
-          top: `${anchorScreenY * 100}%`,
+          top: `${actualVisibleEarthTopScreenY * 100}%`,
           width: 1,
           height: '2rem',
           marginTop: '-1rem',

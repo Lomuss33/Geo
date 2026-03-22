@@ -42,6 +42,7 @@ type SurfaceAnchoredGeoViewInput = {
   distance: number;
   baseFov: number;
   sourceDistance?: number;
+  preserveSourceAnchorNdcY?: boolean;
 };
 type HumanViewConstraintInput = {
   sourceDistance?: number;
@@ -55,14 +56,21 @@ const HEADING_SPIN_THRESHOLD = 0.9;
 const FINAL_APPARENT_SCALE = 2.85;
 const MAX_NATURAL_EFFECTIVE_FOV = 42;
 const OVERVIEW_ANCHOR_EPSILON = 1e-4;
-const FINAL_LOOK_PITCH_DEG = 4.5;
+const FINAL_LOOK_PITCH_DEG = 19.75;
 const FINAL_SURFACE_ANGLE_DEG = 108;
+const FINAL_AXIS_SCREEN_Y = 4 / 5;
+const FINAL_VISIBLE_EARTH_TOP_SCREEN_Y = 0.33;
+const GEO_AXIS_MARKER_CAMERA_LIFT = 0.02;
 const MIN_SURFACE_ANCHOR_NDC_Y = -0.85;
 const SURFACE_ANGLE_SOLVER_SAMPLES = 17;
 const SURFACE_ANGLE_SOLVER_REFINEMENTS = 6;
 
 const HUMAN_RIG_HEIGHT = 1.25;
 const HUMAN_RIG_FORWARD = 0.08;
+const FINAL_HUMAN_RIG_HEIGHT = 1.1;
+const FINAL_HUMAN_RIG_FORWARD = 0.07;
+const CLOSE_RIG_LOWER_START_T = 0.68;
+const CLOSE_ANCHOR_HINT_START_T = 0.82;
 
 const FULL_WIDTH_SURFACE_LON_DEG = 110;
 const FULL_HEIGHT_SURFACE_LAT_DEG = 70;
@@ -71,6 +79,8 @@ const DEFAULT_SURFACE_LAT_DEG = 18;
 
 const WORLD_UP = new Vector3(0, 1, 0);
 const FALLBACK_EAST = new Vector3(0, 0, -1);
+const AXIS_SCREEN_CAMERA = new PerspectiveCamera(28, 1, 0.01, 1000);
+const AXIS_SCREEN_PROJECTED_POINT = new Vector3();
 const STARTUP_VIEWPORT_FIT_MARGIN = 0.985;
 const VISUAL_GLOBE_RADIUS = 1.34;
 
@@ -116,10 +126,30 @@ export const getGeoCameraTransitionT = (distance: number) => {
 };
 
 export const getGeoLookPitchDeg = (distance: number) =>
-  lerp(0, FINAL_LOOK_PITCH_DEG, getGeoCameraTransitionT(distance));
+  lerp(0, FINAL_LOOK_PITCH_DEG, smoothstep(getGeoLinearZoomT(distance)));
 
 export const getGeoDesiredSurfaceAngleDeg = (distance: number) =>
   lerp(180, FINAL_SURFACE_ANGLE_DEG, getGeoCameraTransitionT(distance));
+
+export const getGeoDesiredAxisScreenY = (distance: number) =>
+  lerp(0.5, FINAL_AXIS_SCREEN_Y, smoothstep(getGeoLinearZoomT(distance)));
+
+export const getGeoDesiredVisibleEarthTopScreenY = (distance: number) =>
+  lerp(
+    0,
+    FINAL_VISIBLE_EARTH_TOP_SCREEN_Y,
+    smoothstep(getGeoLinearZoomT(distance)),
+  );
+
+const getGeoCloseRigLowerT = (distance: number) =>
+  smoothstep(
+    clamp(
+      (getGeoLinearZoomT(distance) - CLOSE_RIG_LOWER_START_T) /
+        (1 - CLOSE_RIG_LOWER_START_T),
+      0,
+      1,
+    ),
+  );
 
 const getAnchorTangentBasis = (anchor: Vector3) => {
   const east = new Vector3().crossVectors(WORLD_UP, anchor);
@@ -201,17 +231,30 @@ const getSphereTangentPoint = (origin: Vector3, direction: Vector3) => {
 
 const getGeoRigPosition = (distance: number) => {
   const cameraT = getGeoCameraTransitionT(distance);
+  const closeRigLowerT = getGeoCloseRigLowerT(distance);
+  const rigHeight = lerp(
+    HUMAN_RIG_HEIGHT,
+    FINAL_HUMAN_RIG_HEIGHT,
+    closeRigLowerT,
+  );
+  const rigForward = lerp(
+    HUMAN_RIG_FORWARD,
+    FINAL_HUMAN_RIG_FORWARD,
+    closeRigLowerT,
+  );
 
   return new Vector3(
     0,
-    lerp(0, HUMAN_RIG_HEIGHT, cameraT),
-    distance + HUMAN_RIG_FORWARD * cameraT,
+    lerp(0, rigHeight, cameraT),
+    distance + rigForward * cameraT,
   );
 };
 
-const getGeoRigTarget = (distance: number) => {
+const getGeoRigTarget = (distance: number, lookPitchDeg?: number) => {
   const position = getGeoRigPosition(distance);
-  const lookPitchRadians = getRadiansFromDegrees(getGeoLookPitchDeg(distance));
+  const lookPitchRadians = getRadiansFromDegrees(
+    lookPitchDeg ?? getGeoLookPitchDeg(distance),
+  );
 
   return new Vector3(
     0,
@@ -220,9 +263,9 @@ const getGeoRigTarget = (distance: number) => {
   );
 };
 
-const getGeoRigBasis = (distance: number) => {
+const getGeoRigBasis = (distance: number, lookPitchDeg?: number) => {
   const position = getGeoRigPosition(distance);
-  const target = getGeoRigTarget(distance);
+  const target = getGeoRigTarget(distance, lookPitchDeg);
   const forward = target.clone().sub(position).normalize();
   const right = new Vector3().crossVectors(forward, WORLD_UP);
 
@@ -275,16 +318,18 @@ const solveSurfaceAnchoredRotation = ({
   distance,
   baseFov,
   sourceDistance,
+  preserveSourceAnchorNdcY = false,
 }: SurfaceAnchoredGeoViewInput) => {
   const clampedDistance = clamp(distance, MIN_DISTANCE, MAX_DISTANCE);
+  const linearZoomT = getGeoLinearZoomT(clampedDistance);
 
-  if (getGeoLinearZoomT(clampedDistance) <= OVERVIEW_ANCHOR_EPSILON) {
+  if (linearZoomT <= OVERVIEW_ANCHOR_EPSILON) {
     return quaternionFromCenteredLatLon(lat, lon);
   }
 
   const anchor = latLonToVector3(lat, lon);
   const preferredAnchorNdcY =
-    sourceDistance == null
+    !preserveSourceAnchorNdcY || sourceDistance == null
       ? undefined
       : solveGeoAnchorNdcY({
           distance: sourceDistance,
@@ -698,8 +743,81 @@ const getGeoSurfaceAngleForAnchorNdcY = (
   );
 };
 
-const getAnchorError = (angle: number, desiredAngle: number) =>
-  Math.abs(angle - desiredAngle);
+export const getGeoActualAxisScreenY = (
+  view: GeoAnchorView,
+  anchorNdcYOverride?: number,
+) => {
+  const clampedView = {
+    distance: clamp(view.distance, MIN_DISTANCE, MAX_DISTANCE),
+    fov: clamp(view.fov, 1, 179),
+  } satisfies GeoAnchorView;
+  const { point } = solveOverviewPinnedSurface(clampedView, anchorNdcYOverride);
+  const position = getGeoRigPosition(clampedView.distance);
+  const target = getGeoRigTarget(clampedView.distance);
+
+  AXIS_SCREEN_CAMERA.position.copy(position);
+  AXIS_SCREEN_CAMERA.up.copy(WORLD_UP);
+  AXIS_SCREEN_CAMERA.fov = getGeoEffectiveFov(clampedView);
+  AXIS_SCREEN_CAMERA.aspect = 1;
+  AXIS_SCREEN_CAMERA.lookAt(target);
+  AXIS_SCREEN_CAMERA.updateMatrixWorld(true);
+  AXIS_SCREEN_CAMERA.updateProjectionMatrix();
+
+  return (
+    1 - AXIS_SCREEN_PROJECTED_POINT.copy(point).project(AXIS_SCREEN_CAMERA).y
+  ) / 2;
+};
+
+export const getGeoActualVisibleEarthTopScreenY = (
+  view: GeoAnchorView,
+  lookPitchDegOverride?: number,
+) => {
+  const clampedView = {
+    distance: clamp(view.distance, MIN_DISTANCE, MAX_DISTANCE),
+    fov: clamp(view.fov, 1, 179),
+  } satisfies GeoAnchorView;
+  const position = getGeoRigPosition(clampedView.distance);
+  const lookPitchDeg =
+    lookPitchDegOverride ?? getGeoLookPitchDeg(clampedView.distance);
+  const { forward, up } = getGeoRigBasis(clampedView.distance, lookPitchDeg);
+  const tanHalfFov = Math.tan(
+    (getGeoEffectiveFov(clampedView) * Math.PI) / 360,
+  );
+  const intersectsAtScreenY = (screenY: number) =>
+    getSphereRayHit(
+      position,
+      forward
+        .clone()
+        .addScaledVector(up, (1 - screenY * 2) * tanHalfFov)
+        .normalize(),
+    ) != null;
+
+  if (intersectsAtScreenY(0)) {
+    return 0;
+  }
+
+  if (!intersectsAtScreenY(1)) {
+    return 1;
+  }
+
+  let low = 0;
+  let high = 1;
+
+  for (let iteration = 0; iteration < 20; iteration += 1) {
+    const mid = (low + high) / 2;
+
+    if (intersectsAtScreenY(mid)) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+
+  return high;
+};
+
+const getAnchorScreenYError = (screenY: number, desiredScreenY: number) =>
+  Math.abs(screenY - desiredScreenY);
 
 let lastSolvedAnchorInput:
   | { distance: number; fov: number; anchorNdcY: number }
@@ -723,25 +841,26 @@ const solveGeoAnchorNdcY = (view: GeoAnchorView) => {
     return 0;
   }
 
-  const desiredAngle = getGeoDesiredSurfaceAngleDeg(clampedView.distance);
+  const desiredScreenY = getGeoDesiredAxisScreenY(clampedView.distance);
   let best = {
     anchorNdcY: 0,
-    angle: getGeoSurfaceAngleForAnchorNdcY(clampedView, 0),
+    screenY: getGeoActualAxisScreenY(clampedView, 0),
   };
   let step = Math.abs(MIN_SURFACE_ANCHOR_NDC_Y) /
     Math.max(SURFACE_ANGLE_SOLVER_SAMPLES - 1, 1);
 
   for (let index = 1; index < SURFACE_ANGLE_SOLVER_SAMPLES; index += 1) {
     const anchorNdcY = -step * index;
-    const angle = getGeoSurfaceAngleForAnchorNdcY(clampedView, anchorNdcY);
+    const screenY = getGeoActualAxisScreenY(clampedView, anchorNdcY);
 
     if (
-      getAnchorError(angle, desiredAngle) < getAnchorError(best.angle, desiredAngle) ||
-      (getAnchorError(angle, desiredAngle) ===
-        getAnchorError(best.angle, desiredAngle) &&
-        anchorNdcY < best.anchorNdcY)
+      getAnchorScreenYError(screenY, desiredScreenY) <
+        getAnchorScreenYError(best.screenY, desiredScreenY) ||
+      (getAnchorScreenYError(screenY, desiredScreenY) ===
+        getAnchorScreenYError(best.screenY, desiredScreenY) &&
+        anchorNdcY > best.anchorNdcY)
     ) {
-      best = { anchorNdcY, angle };
+      best = { anchorNdcY, screenY };
     }
   }
 
@@ -759,16 +878,16 @@ const solveGeoAnchorNdcY = (view: GeoAnchorView) => {
         MIN_SURFACE_ANCHOR_NDC_Y,
         0,
       );
-      const angle = getGeoSurfaceAngleForAnchorNdcY(clampedView, anchorNdcY);
+      const screenY = getGeoActualAxisScreenY(clampedView, anchorNdcY);
 
       if (
-        getAnchorError(angle, desiredAngle) <
-          getAnchorError(refinedBest.angle, desiredAngle) ||
-        (getAnchorError(angle, desiredAngle) ===
-          getAnchorError(refinedBest.angle, desiredAngle) &&
-          anchorNdcY < refinedBest.anchorNdcY)
+        getAnchorScreenYError(screenY, desiredScreenY) <
+          getAnchorScreenYError(refinedBest.screenY, desiredScreenY) ||
+        (getAnchorScreenYError(screenY, desiredScreenY) ===
+          getAnchorScreenYError(refinedBest.screenY, desiredScreenY) &&
+          anchorNdcY > refinedBest.anchorNdcY)
       ) {
-        refinedBest = { anchorNdcY, angle };
+        refinedBest = { anchorNdcY, screenY };
       }
     }
 
@@ -797,13 +916,13 @@ const solveGeoAnchorNdcYNear = (
     return 0;
   }
 
-  const desiredAngle = getGeoDesiredSurfaceAngleDeg(clampedView.distance);
+  const desiredScreenY = getGeoDesiredAxisScreenY(clampedView.distance);
   let best = {
     anchorNdcY: clamp(preferredAnchorNdcY, MIN_SURFACE_ANCHOR_NDC_Y, 0),
-    angle: 0,
+    screenY: 0,
   };
 
-  best.angle = getGeoSurfaceAngleForAnchorNdcY(clampedView, best.anchorNdcY);
+  best.screenY = getGeoActualAxisScreenY(clampedView, best.anchorNdcY);
 
   let step = Math.abs(MIN_SURFACE_ANCHOR_NDC_Y) / 4;
 
@@ -820,17 +939,17 @@ const solveGeoAnchorNdcYNear = (
         MIN_SURFACE_ANCHOR_NDC_Y,
         0,
       );
-      const angle = getGeoSurfaceAngleForAnchorNdcY(clampedView, anchorNdcY);
+      const screenY = getGeoActualAxisScreenY(clampedView, anchorNdcY);
 
       if (
-        getAnchorError(angle, desiredAngle) <
-          getAnchorError(refinedBest.angle, desiredAngle) ||
-        (getAnchorError(angle, desiredAngle) ===
-          getAnchorError(refinedBest.angle, desiredAngle) &&
+        getAnchorScreenYError(screenY, desiredScreenY) <
+          getAnchorScreenYError(refinedBest.screenY, desiredScreenY) ||
+        (getAnchorScreenYError(screenY, desiredScreenY) ===
+          getAnchorScreenYError(refinedBest.screenY, desiredScreenY) &&
           Math.abs(anchorNdcY - preferredAnchorNdcY) <
             Math.abs(refinedBest.anchorNdcY - preferredAnchorNdcY))
       ) {
-        refinedBest = { anchorNdcY, angle };
+        refinedBest = { anchorNdcY, screenY };
       }
     }
 
@@ -857,7 +976,10 @@ export const getGeoAnchorNdcY = (distance: number) =>
   });
 
 export const getGeoAnchorScreenY = (distance: number) =>
-  (1 - getGeoAnchorNdcY(distance)) / 2;
+  getGeoActualAxisScreenY({
+    distance,
+    fov: DEFAULT_FOV,
+  });
 
 export const getOverviewPinnedSurfaceDebug = (
   view: GeoAnchorView,
@@ -876,6 +998,36 @@ export const getOverviewPinnedSurfaceLocal = (
 
 export const getPinnedSurfaceLocal = getOverviewPinnedSurfaceLocal;
 
+const getGeoAxisSurfaceLocalForDistance = (
+  view: GlobeViewState,
+  sourceDistance = view.distance,
+) =>
+  getOverviewPinnedSurfaceLocal({
+    distance: sourceDistance,
+    fov: view.fov,
+  })
+    .applyQuaternion(quaternionFromArray(view.rotation).clone().invert())
+    .normalize();
+
+export const getGeoAxisSurfaceLocal = (view: GlobeViewState) =>
+  getGeoAxisSurfaceLocalForDistance(view);
+
+export const getGeoAxisMarkerLocal = (view: GlobeViewState) => {
+  const rotation = quaternionFromArray(view.rotation);
+  const axisWorld = getGeoAxisSurfaceLocal(view)
+    .clone()
+    .applyQuaternion(rotation);
+  const cameraWorld = new Vector3(...getGeoCameraPose(view).position);
+  const liftedWorld = axisWorld
+    .clone()
+    .addScaledVector(
+      cameraWorld.clone().sub(axisWorld).normalize(),
+      GEO_AXIS_MARKER_CAMERA_LIFT,
+    );
+
+  return liftedWorld.applyQuaternion(rotation.clone().invert());
+};
+
 export const deriveGeoCenteredAnchor = (
   view: GlobeViewState,
 ): GeoOverviewAnchor => {
@@ -893,14 +1045,8 @@ export const deriveSurfaceAnchor = (
   view: GlobeViewState,
   sourceDistance = view.distance,
 ) => {
-  const rotation = quaternionFromArray(view.rotation);
   const center = vector3ToLatLon(
-    getOverviewPinnedSurfaceLocal({
-      distance: sourceDistance,
-      fov: view.fov,
-    })
-      .applyQuaternion(rotation.clone().invert())
-      .normalize(),
+    getGeoAxisSurfaceLocalForDistance(view, sourceDistance),
   );
 
   return {
@@ -962,6 +1108,7 @@ export function surfaceAnchoredGeoView(
     distance: resolvedDistance,
     baseFov: resolvedBaseFov,
     sourceDistance: resolvedSourceDistance,
+    preserveSourceAnchorNdcY: resolvedPreserveSourceAnchorNdcY = false,
   } =
     typeof inputOrLat === 'number'
       ? {
@@ -971,6 +1118,7 @@ export function surfaceAnchoredGeoView(
           distance: distance ?? DEFAULT_DISTANCE,
           baseFov: baseFov ?? DEFAULT_FOV,
           sourceDistance: undefined,
+          preserveSourceAnchorNdcY: false,
         }
       : inputOrLat;
   const clampedDistance = clamp(resolvedDistance, MIN_DISTANCE, MAX_DISTANCE);
@@ -993,6 +1141,7 @@ export function surfaceAnchoredGeoView(
     distance: clampedDistance,
     baseFov: normalizedFov,
     sourceDistance: resolvedSourceDistance,
+    preserveSourceAnchorNdcY: resolvedPreserveSourceAnchorNdcY,
   });
 
   return {
@@ -1012,6 +1161,7 @@ export const applyHumanViewConstraint = (
   const baseFov = clamp(view.fov, 1, 179);
   const linearZoomT = getGeoLinearZoomT(distance);
   const sourceDistance = resolvedInput.sourceDistance ?? distance;
+  const sourceLinearZoomT = getGeoLinearZoomT(sourceDistance);
 
   if (linearZoomT <= OVERVIEW_ANCHOR_EPSILON) {
     return {
@@ -1023,6 +1173,7 @@ export const applyHumanViewConstraint = (
 
   let anchor = resolvedInput.anchor ?? null;
   let headingDeg = resolvedInput.headingDeg ?? 0;
+  let preserveSourceAnchorNdcY = false;
 
   if (!anchor && linearZoomT > OVERVIEW_ANCHOR_EPSILON) {
     const fallbackView = {
@@ -1036,6 +1187,13 @@ export const applyHumanViewConstraint = (
       lon: preservedAnchor.anchorLon,
     };
     headingDeg = deriveGeoOverviewHeading(fallbackView, anchor);
+    preserveSourceAnchorNdcY = true;
+  } else if (
+    anchor &&
+    linearZoomT >= CLOSE_ANCHOR_HINT_START_T &&
+    sourceLinearZoomT >= CLOSE_ANCHOR_HINT_START_T
+  ) {
+    preserveSourceAnchorNdcY = true;
   }
 
   if (!anchor) {
@@ -1053,6 +1211,7 @@ export const applyHumanViewConstraint = (
     distance,
     baseFov,
     sourceDistance,
+    preserveSourceAnchorNdcY,
   });
 };
 

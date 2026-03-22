@@ -6,11 +6,11 @@ import {
 import { WorkspaceIconButton } from './WorkspaceIconButton';
 import type {
   AnimationBlock,
-  ViewerMode,
+  AnimationMode,
 } from '../state/viewerStore';
 
 type AnimationInspectorProps = {
-  viewerMode: ViewerMode;
+  viewerMode: AnimationMode;
   totalDurationMs: number;
   selectedBlock: AnimationBlock | null;
   onUpdateBlock: (

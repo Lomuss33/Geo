@@ -1,0 +1,1165 @@
+{
+  "indicator": "GDP (current US$)",
+  "records": [
+    {
+      "iso3": "ABW",
+      "name": "Aruba",
+      "value": 4265650673.00236
+    },
+    {
+      "iso3": "AFG",
+      "name": "Afghanistan",
+      "value": 17152234636.8715
+    },
+    {
+      "iso3": "AGO",
+      "name": "Angola",
+      "value": 100998916781.079
+    },
+    {
+      "iso3": "AIA",
+      "name": "Anguilla",
+      "value": null
+    },
+    {
+      "iso3": "ALB",
+      "name": "Albania",
+      "value": 27046429296.6673
+    },
+    {
+      "iso3": "AND",
+      "name": "Andorra",
+      "value": 4039842405.48117
+    },
+    {
+      "iso3": "ARE",
+      "name": "United Arab Emirates",
+      "value": 552324846834.581
+    },
+    {
+      "iso3": "ARG",
+      "name": "the Argentine Republic",
+      "value": 638365455340.04
+    },
+    {
+      "iso3": "ARM",
+      "name": "The Republic of Armenia",
+      "value": 25955275380.0321
+    },
+    {
+      "iso3": "ASM",
+      "name": "American Samoa",
+      "value": 871000000
+    },
+    {
+      "iso3": "ATA",
+      "name": "Antarctica",
+      "value": null
+    },
+    {
+      "iso3": "ATG",
+      "name": "Antigua and Barbuda",
+      "value": 2207622874.07407
+    },
+    {
+      "iso3": "AUS",
+      "name": "Australia",
+      "value": 1757022451652.83
+    },
+    {
+      "iso3": "AUT",
+      "name": "Austria",
+      "value": 534790720466.822
+    },
+    {
+      "iso3": "AZE",
+      "name": "Azerbaijan",
+      "value": 74315882352.9412
+    },
+    {
+      "iso3": "BDI",
+      "name": "Burundi",
+      "value": 3082433067.32634
+    },
+    {
+      "iso3": "BEL",
+      "name": "Belgium",
+      "value": 671370081636.406
+    },
+    {
+      "iso3": "BEN",
+      "name": "The Republic of Benin",
+      "value": 21482643706.4249
+    },
+    {
+      "iso3": "BES",
+      "name": "Bonaire, Sint Eustatius, and Saba",
+      "value": null
+    },
+    {
+      "iso3": "BFA",
+      "name": "Burkina Faso",
+      "value": 23124729853.0218
+    },
+    {
+      "iso3": "BGD",
+      "name": "Bangledesh",
+      "value": 450119432068.852
+    },
+    {
+      "iso3": "BGR",
+      "name": "the Republic of Bulgaria",
+      "value": 113343355779.985
+    },
+    {
+      "iso3": "BHR",
+      "name": "Bahrain",
+      "value": 47109734308.5106
+    },
+    {
+      "iso3": "BHS",
+      "name": "Commonwealth of The Bahamas",
+      "value": 15832800000
+    },
+    {
+      "iso3": "BIH",
+      "name": "Bosnia and Herzegovina",
+      "value": 29613572022.8993
+    },
+    {
+      "iso3": "BLM",
+      "name": "Saint Barthelemy",
+      "value": null
+    },
+    {
+      "iso3": "BLR",
+      "name": "Belarus",
+      "value": 75961865471.9129
+    },
+    {
+      "iso3": "BLZ",
+      "name": "Belize",
+      "value": 3203631800
+    },
+    {
+      "iso3": "BMU",
+      "name": "Bermuda",
+      "value": 9233600000
+    },
+    {
+      "iso3": "BOL",
+      "name": "Bolivia (Plurinational State *",
+      "value": 54881327452.9667
+    },
+    {
+      "iso3": "BRA",
+      "name": "Brazil",
+      "value": 2185821648943.86
+    },
+    {
+      "iso3": "BRB",
+      "name": "Barbados",
+      "value": 7498050000
+    },
+    {
+      "iso3": "BRN",
+      "name": "Brunei",
+      "value": 15340808592.48
+    },
+    {
+      "iso3": "BTN",
+      "name": "Bhutan",
+      "value": 3012896789.24928
+    },
+    {
+      "iso3": "BWA",
+      "name": "Botswana",
+      "value": 19402063512.9066
+    },
+    {
+      "iso3": "CAF",
+      "name": "the Central African Republic",
+      "value": 2751494281.06887
+    },
+    {
+      "iso3": "CAN",
+      "name": "Canada",
+      "value": 2243636826633.76
+    },
+    {
+      "iso3": "CHE",
+      "name": "The Swiss Confederation",
+      "value": 936564198048.516
+    },
+    {
+      "iso3": "CHL",
+      "name": "Republic of Chile",
+      "value": 330267137371.592
+    },
+    {
+      "iso3": "CHN",
+      "name": "China",
+      "value": 18743803170827.2
+    },
+    {
+      "iso3": "CIV",
+      "name": "Côte d’Ivoire",
+      "value": 87113179149.284
+    },
+    {
+      "iso3": "CMR",
+      "name": "the Republic of Cameroon",
+      "value": 53296694320.2057
+    },
+    {
+      "iso3": "COD",
+      "name": "Democratic Republic of the Congo",
+      "value": 70962185790.7094
+    },
+    {
+      "iso3": "COG",
+      "name": "Congo",
+      "value": 15719986076.6464
+    },
+    {
+      "iso3": "COK",
+      "name": "Cook Islands",
+      "value": null
+    },
+    {
+      "iso3": "COL",
+      "name": "Colombia",
+      "value": 418818154879.271
+    },
+    {
+      "iso3": "COM",
+      "name": "Comoros",
+      "value": 1440991455.45188
+    },
+    {
+      "iso3": "CPV",
+      "name": "Cabo Verde",
+      "value": 2725414150.72735
+    },
+    {
+      "iso3": "CRI",
+      "name": "Costa Rica",
+      "value": 95350423176.5962
+    },
+    {
+      "iso3": "CUB",
+      "name": "Cuba",
+      "value": 107352000000
+    },
+    {
+      "iso3": "CUW",
+      "name": "Curacao",
+      "value": 3561178196.20713
+    },
+    {
+      "iso3": "CYM",
+      "name": "Cayman Islands",
+      "value": 7241244269.45972
+    },
+    {
+      "iso3": "CYP",
+      "name": "Cyprus",
+      "value": 37634533331.8902
+    },
+    {
+      "iso3": "CZE",
+      "name": "Czech Republic",
+      "value": 347034062928.479
+    },
+    {
+      "iso3": "DEU",
+      "name": "the Federal Republic of Germany",
+      "value": 4685592577804.69
+    },
+    {
+      "iso3": "DJI",
+      "name": "The Repubic of Djibouti",
+      "value": 4152145939.98458
+    },
+    {
+      "iso3": "DMA",
+      "name": "the Commonwealth of Dominica",
+      "value": 688881481.481481
+    },
+    {
+      "iso3": "DNK",
+      "name": "Denmark",
+      "value": 424524722037.047
+    },
+    {
+      "iso3": "DOM",
+      "name": "Dominican Republic",
+      "value": 124282245638.568
+    },
+    {
+      "iso3": "DZA",
+      "name": "Algeria",
+      "value": 269322281664.773
+    },
+    {
+      "iso3": "ECU",
+      "name": "Ecuador",
+      "value": 124676074700
+    },
+    {
+      "iso3": "EGY",
+      "name": "Egypt",
+      "value": 389059911003.566
+    },
+    {
+      "iso3": "ERI",
+      "name": "Eritrea",
+      "value": 2065001626.01626
+    },
+    {
+      "iso3": "ESP",
+      "name": "Spain",
+      "value": 1725671652742.19
+    },
+    {
+      "iso3": "EST",
+      "name": "Estonia",
+      "value": 43130419829.35
+    },
+    {
+      "iso3": "ETH",
+      "name": "Ethiopia",
+      "value": 149740297952.986
+    },
+    {
+      "iso3": "FIN",
+      "name": "Finland",
+      "value": 298696961297.656
+    },
+    {
+      "iso3": "FJI",
+      "name": "Fiji",
+      "value": 5968125909.27126
+    },
+    {
+      "iso3": "FLK",
+      "name": "Falkland Islands",
+      "value": null
+    },
+    {
+      "iso3": "FRA",
+      "name": "France",
+      "value": 3160442622465.08
+    },
+    {
+      "iso3": "FRO",
+      "name": "Faroe Islands",
+      "value": 4052937169.76536
+    },
+    {
+      "iso3": "FSM",
+      "name": "Federated States of Micronesia",
+      "value": 471425099.488675
+    },
+    {
+      "iso3": "GAB",
+      "name": "Gabon",
+      "value": 20895684425.6752
+    },
+    {
+      "iso3": "GBR",
+      "name": "United Kingdom",
+      "value": 3686033044482.13
+    },
+    {
+      "iso3": "GEO",
+      "name": "Georgia",
+      "value": 34189423544.9955
+    },
+    {
+      "iso3": "GGY",
+      "name": "Guernsey",
+      "value": null
+    },
+    {
+      "iso3": "GHA",
+      "name": "Ghana",
+      "value": 82308110386.4641
+    },
+    {
+      "iso3": "GIB",
+      "name": "Gibraltar",
+      "value": null
+    },
+    {
+      "iso3": "GIN",
+      "name": "Guinea",
+      "value": 25008678293.4084
+    },
+    {
+      "iso3": "GLP",
+      "name": "Guadeloupe",
+      "value": null
+    },
+    {
+      "iso3": "GMB",
+      "name": "Republic of the Gambia",
+      "value": 2404888749.21907
+    },
+    {
+      "iso3": "GNB",
+      "name": "Guinea-Bissau",
+      "value": 2218393804.54798
+    },
+    {
+      "iso3": "GNQ",
+      "name": "Equatorial Guinea",
+      "value": 12765777677.0622
+    },
+    {
+      "iso3": "GRC",
+      "name": "Greece",
+      "value": 256238371778.118
+    },
+    {
+      "iso3": "GRD",
+      "name": "Grenada",
+      "value": 1371918518.51852
+    },
+    {
+      "iso3": "GRL",
+      "name": "Greenland",
+      "value": 3326543974.39193
+    },
+    {
+      "iso3": "GTM",
+      "name": "Guatemala",
+      "value": 113199581158.203
+    },
+    {
+      "iso3": "GUF",
+      "name": "French Guiana",
+      "value": null
+    },
+    {
+      "iso3": "GUM",
+      "name": "Guam",
+      "value": 6910000000
+    },
+    {
+      "iso3": "GUY",
+      "name": "Guyana",
+      "value": 24662709832.1343
+    },
+    {
+      "iso3": "HND",
+      "name": "Honduras",
+      "value": 37093565854.0437
+    },
+    {
+      "iso3": "HRV",
+      "name": "Croatia",
+      "value": 92983810328.9088
+    },
+    {
+      "iso3": "HTI",
+      "name": "Haiti",
+      "value": 25224154990.7946
+    },
+    {
+      "iso3": "HUN",
+      "name": "Hungary",
+      "value": 222722738925.641
+    },
+    {
+      "iso3": "IDN",
+      "name": "Indonesia",
+      "value": 1396300098190.97
+    },
+    {
+      "iso3": "IMN",
+      "name": "Isle of Man",
+      "value": 7431257410.92713
+    },
+    {
+      "iso3": "IND",
+      "name": "India",
+      "value": 3909891533858.08
+    },
+    {
+      "iso3": "IRL",
+      "name": "Ireland",
+      "value": 609157459747.205
+    },
+    {
+      "iso3": "IRN",
+      "name": "Islamic Republic of Iran",
+      "value": 475252089215.416
+    },
+    {
+      "iso3": "IRQ",
+      "name": "Republic of Iraq",
+      "value": 279641257615.385
+    },
+    {
+      "iso3": "ISL",
+      "name": "Iceland",
+      "value": 33255181468.9382
+    },
+    {
+      "iso3": "ISR",
+      "name": "Israel",
+      "value": 540379921261.681
+    },
+    {
+      "iso3": "ITA",
+      "name": "Nord-Ovest",
+      "value": 2380825077243.59
+    },
+    {
+      "iso3": "JAM",
+      "name": "Jamaica",
+      "value": 22014397089.7689
+    },
+    {
+      "iso3": "JOR",
+      "name": "the Hashemite Kingdom of Jordan",
+      "value": 53352289577.4648
+    },
+    {
+      "iso3": "JPN",
+      "name": "Japan",
+      "value": 4027597523550.58
+    },
+    {
+      "iso3": "KAZ",
+      "name": "Kazakhstan",
+      "value": 291480274648.826
+    },
+    {
+      "iso3": "KEN",
+      "name": "Republic of Kenya",
+      "value": 120339557905.932
+    },
+    {
+      "iso3": "KGZ",
+      "name": "Kyrgyzstan",
+      "value": 17478259659.2625
+    },
+    {
+      "iso3": "KHM",
+      "name": "Cambodia",
+      "value": 46352647037.2406
+    },
+    {
+      "iso3": "KIR",
+      "name": "Kiribati",
+      "value": 307862564.489711
+    },
+    {
+      "iso3": "KNA",
+      "name": "Saint Kitts and Nevis",
+      "value": 1122388888.88889
+    },
+    {
+      "iso3": "KOR",
+      "name": "Republic of Korea",
+      "value": 1875388209406.8
+    },
+    {
+      "iso3": "KWT",
+      "name": "Kuwait",
+      "value": 160227273053.334
+    },
+    {
+      "iso3": "LAO",
+      "name": "Lao People's Democratic Repub*",
+      "value": 16502933121.3379
+    },
+    {
+      "iso3": "LBN",
+      "name": "Republic of Lebanon",
+      "value": 20078620356.9931
+    },
+    {
+      "iso3": "LBR",
+      "name": "Liberia",
+      "value": 4779300900
+    },
+    {
+      "iso3": "LBY",
+      "name": "Libya",
+      "value": 48487151215.345
+    },
+    {
+      "iso3": "LCA",
+      "name": "Saint Lucia",
+      "value": 2549062962.96296
+    },
+    {
+      "iso3": "LIE",
+      "name": "Liechtenstein",
+      "value": 8239379403.22096
+    },
+    {
+      "iso3": "LKA",
+      "name": "Sri Lanka",
+      "value": 98963185509.6499
+    },
+    {
+      "iso3": "LSO",
+      "name": "Lesotho",
+      "value": 2271759454.51107
+    },
+    {
+      "iso3": "LTU",
+      "name": "Lithuania",
+      "value": 84869215513.3648
+    },
+    {
+      "iso3": "LUX",
+      "name": "Luxembourg",
+      "value": 93279851863.4062
+    },
+    {
+      "iso3": "LVA",
+      "name": "the Republic of Latvia",
+      "value": 43684254432.3609
+    },
+    {
+      "iso3": "MAR",
+      "name": "Morocco",
+      "value": 160610994054.734
+    },
+    {
+      "iso3": "MCO",
+      "name": "Monaco",
+      "value": 11125783372.4794
+    },
+    {
+      "iso3": "MDA",
+      "name": "Republic of Moldova",
+      "value": 18200340853.6517
+    },
+    {
+      "iso3": "MDG",
+      "name": "Madagascar",
+      "value": 17420501490.1231
+    },
+    {
+      "iso3": "MDV",
+      "name": "Maldives",
+      "value": 7061608267.25451
+    },
+    {
+      "iso3": "MEX",
+      "name": "Mexico",
+      "value": 1856365616165.94
+    },
+    {
+      "iso3": "MHL",
+      "name": "Marshall Islands",
+      "value": 290108489.990234
+    },
+    {
+      "iso3": "MKD",
+      "name": "Republic of Macedonia",
+      "value": 16951682245.4202
+    },
+    {
+      "iso3": "MLI",
+      "name": "Mali",
+      "value": 26794747239.8805
+    },
+    {
+      "iso3": "MLT",
+      "name": "Malta",
+      "value": 24971574502.4475
+    },
+    {
+      "iso3": "MMR",
+      "name": "Myanmar",
+      "value": 74068349523.8095
+    },
+    {
+      "iso3": "MNE",
+      "name": "Montenegro",
+      "value": 8270016670.86774
+    },
+    {
+      "iso3": "MNG",
+      "name": "Mongolia",
+      "value": 23794540024.5132
+    },
+    {
+      "iso3": "MNP",
+      "name": "Northern Mariana Islands",
+      "value": 1096000000
+    },
+    {
+      "iso3": "MOZ",
+      "name": "Mozambique",
+      "value": 22745341305.0622
+    },
+    {
+      "iso3": "MRT",
+      "name": "Mauritania",
+      "value": 10908045686.8808
+    },
+    {
+      "iso3": "MSR",
+      "name": "Montserrat",
+      "value": null
+    },
+    {
+      "iso3": "MTQ",
+      "name": "Martinique",
+      "value": null
+    },
+    {
+      "iso3": "MUS",
+      "name": "Mauritius",
+      "value": 14937861786.17
+    },
+    {
+      "iso3": "MWI",
+      "name": "Malawi",
+      "value": 11316411329.4619
+    },
+    {
+      "iso3": "MYS",
+      "name": "Malaysia",
+      "value": 422227005428.688
+    },
+    {
+      "iso3": "MYT",
+      "name": "Mayotte",
+      "value": null
+    },
+    {
+      "iso3": "NAM",
+      "name": "Republic of Namibia",
+      "value": 13372354511.716
+    },
+    {
+      "iso3": "NCL",
+      "name": "New Caledonia",
+      "value": 8548919387.12607
+    },
+    {
+      "iso3": "NER",
+      "name": "Niger",
+      "value": 19876128485.7857
+    },
+    {
+      "iso3": "NGA",
+      "name": "the Federal Republic of Nigeria",
+      "value": 252261880141.151
+    },
+    {
+      "iso3": "NIC",
+      "name": "Nicaragua",
+      "value": 19693982967.5926
+    },
+    {
+      "iso3": "NIU",
+      "name": "Niue",
+      "value": null
+    },
+    {
+      "iso3": "NLD",
+      "name": "Kingdom of the Netherlands",
+      "value": 1214927698572.66
+    },
+    {
+      "iso3": "NOR",
+      "name": "Norway",
+      "value": 483592648313.301
+    },
+    {
+      "iso3": "NPL",
+      "name": "NEPAL",
+      "value": 42914268286.7109
+    },
+    {
+      "iso3": "NRU",
+      "name": "Nauru",
+      "value": 162588620.632234
+    },
+    {
+      "iso3": "NZL",
+      "name": "New Zealand",
+      "value": 260172385097.616
+    },
+    {
+      "iso3": "OMN",
+      "name": "Oman",
+      "value": 107137198769.386
+    },
+    {
+      "iso3": "PAK",
+      "name": "Pakistan",
+      "value": 371570000121.266
+    },
+    {
+      "iso3": "PAN",
+      "name": "The Republic of Panama",
+      "value": 86523959131.7472
+    },
+    {
+      "iso3": "PCN",
+      "name": "Pitcairn Island",
+      "value": null
+    },
+    {
+      "iso3": "PER",
+      "name": "Peru",
+      "value": 289221969062.941
+    },
+    {
+      "iso3": "PHL",
+      "name": "The Philippines",
+      "value": 461617509782.355
+    },
+    {
+      "iso3": "PLW",
+      "name": "Palau",
+      "value": 276733062.744141
+    },
+    {
+      "iso3": "PNG",
+      "name": "Papua New Guinea",
+      "value": 31800428265.5246
+    },
+    {
+      "iso3": "POL",
+      "name": "Poland",
+      "value": 917767106146.761
+    },
+    {
+      "iso3": "PRI",
+      "name": "Puerto Rico",
+      "value": 126029527033.705
+    },
+    {
+      "iso3": "PRK",
+      "name": "Democratic Peoples Republic of Korea (the)",
+      "value": null
+    },
+    {
+      "iso3": "PRT",
+      "name": "Portugal",
+      "value": 313271185085.102
+    },
+    {
+      "iso3": "PRY",
+      "name": "Paraguay",
+      "value": 44458118397.4445
+    },
+    {
+      "iso3": "PSE",
+      "name": "State of Palestine",
+      "value": 13711100000
+    },
+    {
+      "iso3": "PYF",
+      "name": "French Polynesia",
+      "value": 6323716355.05009
+    },
+    {
+      "iso3": "QAT",
+      "name": "Qatar",
+      "value": 219162637362.637
+    },
+    {
+      "iso3": "REU",
+      "name": "RÃ©union",
+      "value": null
+    },
+    {
+      "iso3": "ROU",
+      "name": "Romania",
+      "value": 382564217988.866
+    },
+    {
+      "iso3": "RUS",
+      "name": "Russian Federation",
+      "value": 2173835806671.66
+    },
+    {
+      "iso3": "RWA",
+      "name": "Rwanda",
+      "value": 14251642235.0968
+    },
+    {
+      "iso3": "SAU",
+      "name": "Saudi Arabia",
+      "value": 1239804533333.33
+    },
+    {
+      "iso3": "SDN",
+      "name": "Sudan",
+      "value": 49672435513.1126
+    },
+    {
+      "iso3": "SEN",
+      "name": "Senegal",
+      "value": 32808056600.9436
+    },
+    {
+      "iso3": "SGP",
+      "name": "Singapore",
+      "value": 547386645891.847
+    },
+    {
+      "iso3": "SHN",
+      "name": "Saint Helena, Ascension, and Tristan da Cunha",
+      "value": null
+    },
+    {
+      "iso3": "SLB",
+      "name": "Solomon Islands",
+      "value": 1583964703.75061
+    },
+    {
+      "iso3": "SLE",
+      "name": "Republic of Sierra Leone",
+      "value": 6971127235.3123
+    },
+    {
+      "iso3": "SLV",
+      "name": "El Salvador",
+      "value": 35364960000
+    },
+    {
+      "iso3": "SMR",
+      "name": "San Marino",
+      "value": 2027527227.831
+    },
+    {
+      "iso3": "SOM",
+      "name": "Somalia",
+      "value": 11967000000
+    },
+    {
+      "iso3": "SRB",
+      "name": "Serbia",
+      "value": 90097765959.1114
+    },
+    {
+      "iso3": "SSD",
+      "name": "South Sudan",
+      "value": 11997800760.2242
+    },
+    {
+      "iso3": "STP",
+      "name": "Sao Tome and Principe",
+      "value": 822154621.088897
+    },
+    {
+      "iso3": "SUR",
+      "name": "Suriname",
+      "value": 4416775112.09627
+    },
+    {
+      "iso3": "SVK",
+      "name": "Slovakia",
+      "value": 140934076532.375
+    },
+    {
+      "iso3": "SVN",
+      "name": "Slovenia",
+      "value": 72972015197.3859
+    },
+    {
+      "iso3": "SWE",
+      "name": "Sweden",
+      "value": 603715224265.798
+    },
+    {
+      "iso3": "SWZ",
+      "name": "Eswatini",
+      "value": 4858885840.77236
+    },
+    {
+      "iso3": "SYC",
+      "name": "Seychelles",
+      "value": 2167239562.46013
+    },
+    {
+      "iso3": "SYR",
+      "name": "Syrian Arab Republic",
+      "value": 23622827079.5047
+    },
+    {
+      "iso3": "TCA",
+      "name": "Turks and Caicos",
+      "value": 1745378000
+    },
+    {
+      "iso3": "TCD",
+      "name": "Chad",
+      "value": 19518819751.283
+    },
+    {
+      "iso3": "TGO",
+      "name": "Togo",
+      "value": 10651180146.531
+    },
+    {
+      "iso3": "THA",
+      "name": "Thailand",
+      "value": 526517658841.684
+    },
+    {
+      "iso3": "TJK",
+      "name": "Tajikistan",
+      "value": 14204575548.5536
+    },
+    {
+      "iso3": "TKL",
+      "name": "Tokelau",
+      "value": null
+    },
+    {
+      "iso3": "TKM",
+      "name": "Turkmenistan",
+      "value": 51387209872.2994
+    },
+    {
+      "iso3": "TLS",
+      "name": "Timor-Leste",
+      "value": 1865608515.41321
+    },
+    {
+      "iso3": "TON",
+      "name": "Tonga",
+      "value": 591139749.44287
+    },
+    {
+      "iso3": "TTO",
+      "name": "Trinidad and Tobago",
+      "value": 25633544529.4849
+    },
+    {
+      "iso3": "TUN",
+      "name": "Tunisia",
+      "value": 51332285656.5422
+    },
+    {
+      "iso3": "TUR",
+      "name": "Turkey",
+      "value": 1359123768774.12
+    },
+    {
+      "iso3": "TUV",
+      "name": "Tuvalu",
+      "value": 62280311.5852172
+    },
+    {
+      "iso3": "TWN",
+      "name": "Republic Of China",
+      "value": null
+    },
+    {
+      "iso3": "TZA",
+      "name": "Tanzania",
+      "value": 78844405385.2195
+    },
+    {
+      "iso3": "UGA",
+      "name": "Uganda",
+      "value": 53911907086.1525
+    },
+    {
+      "iso3": "UKR",
+      "name": "Ukraine",
+      "value": 190741262414.705
+    },
+    {
+      "iso3": "URY",
+      "name": "Uruguay",
+      "value": 80961511073.5797
+    },
+    {
+      "iso3": "USA",
+      "name": "United States",
+      "value": 28750956130731.2
+    },
+    {
+      "iso3": "UZB",
+      "name": "Uzbekistan",
+      "value": 114965293466.611
+    },
+    {
+      "iso3": "VAT",
+      "name": "Vatican City",
+      "value": null
+    },
+    {
+      "iso3": "VCT",
+      "name": "Saint Vincent and the Grenadines",
+      "value": 1157207407.40741
+    },
+    {
+      "iso3": "VEN",
+      "name": "Bolivarian Republic of Venezuela",
+      "value": 119802963257.783
+    },
+    {
+      "iso3": "VGB",
+      "name": "British Virgin Islands",
+      "value": null
+    },
+    {
+      "iso3": "VIR",
+      "name": "Virgin Islands",
+      "value": 4672000000
+    },
+    {
+      "iso3": "VNM",
+      "name": "Vietnam",
+      "value": 476388230307.175
+    },
+    {
+      "iso3": "VUT",
+      "name": "Vanuatu",
+      "value": 1117972034.22642
+    },
+    {
+      "iso3": "WLF",
+      "name": "Wallis and Futuna",
+      "value": null
+    },
+    {
+      "iso3": "WSM",
+      "name": "Samoa",
+      "value": 1175749785.65113
+    },
+    {
+      "iso3": "XKX",
+      "name": "Kosovo",
+      "value": 11197246322.588
+    },
+    {
+      "iso3": "YEM",
+      "name": "Yemen",
+      "value": 21606160663.0318
+    },
+    {
+      "iso3": "ZAF",
+      "name": "South Africa",
+      "value": 401144998373.585
+    },
+    {
+      "iso3": "ZMB",
+      "name": "Zambia",
+      "value": 25303185342.2511
+    },
+    {
+      "iso3": "ZWE",
+      "name": "Zimbabwe",
+      "value": 41539411516.4448
+    }
+  ]
+}

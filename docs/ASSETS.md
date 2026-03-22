@@ -13,6 +13,20 @@
 - Cloud layer: generated in `src/lib/proceduralTexture.ts`
 - Atmosphere glow: shader in `src/scene/Atmosphere.tsx`
 
+## Borders Follow-Up
+
+- Current `public/assets/borders/` bundle size is about 100 MB total.
+- Current Borders vector-tile output contains 3,765 `.pbf` tile files.
+- Current Borders runtime is intentionally fully local and GitHub Pages-compatible.
+
+Deferred reduction options, in priority order:
+
+1. Increase geometry simplification for ADM1 and ADM2 before tiling.
+2. Reduce tile max zoom for ADM1 and ADM2 if the current visual thresholds still hold up.
+3. Split ADM2 into an optional secondary pack while keeping ADM0 and ADM1 in the core local bundle.
+4. Revisit country coverage tiering for territories or fallback ADM0 sources.
+5. Consider a packaged-tile format in a future pass only if hosting and browser constraints change.
+
 ## Rules
 
 - Keep optimized runtime imagery only.

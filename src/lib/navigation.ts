@@ -1,5 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
 import { MAX_DISTANCE, MIN_DISTANCE, viewFromLatLon } from './constants';
+import { normalizeBordersView } from './bordersBridge';
 import {
   getRollDegrees,
   getViewCenterLocal,
@@ -7,7 +8,11 @@ import {
 } from './geo';
 import { clamp, quaternionFromArray, quaternionToArray } from './math';
 import { normalizeHeadwayView } from './modeBridge';
-import type { GlobeViewState, HeadwayViewState } from '../state/viewerStore';
+import type {
+  BordersViewState,
+  GlobeViewState,
+  HeadwayViewState,
+} from '../state/viewerStore';
 
 type Direction = 'left' | 'right' | 'up' | 'down';
 type GeoRotationKind = 'yaw' | 'pitch' | 'roll';
@@ -248,6 +253,77 @@ export const stepHeadwayZoom = (view: HeadwayViewState, delta: number) => {
   const normalized = normalizeHeadwayView(view);
 
   return normalizeHeadwayView({
+    ...normalized,
+    zoom: normalized.zoom + delta,
+  });
+};
+
+export const resetBordersAxes = (
+  view: BordersViewState,
+): BordersViewState => {
+  const normalized = normalizeBordersView(view);
+
+  return {
+    ...normalized,
+    bearing: 0,
+    pitch: 0,
+  };
+};
+
+export const nudgeBordersCenter = (
+  view: BordersViewState,
+  direction: Direction,
+  stepDeg: number,
+) => {
+  const normalized = normalizeBordersView(view);
+  const [lon, lat] = normalized.center;
+  const nextLat =
+    direction === 'up'
+      ? clamp(lat + stepDeg, -89.5, 89.5)
+      : direction === 'down'
+        ? clamp(lat - stepDeg, -89.5, 89.5)
+        : lat;
+  const nextLon =
+    direction === 'left'
+      ? wrapLongitude(lon - stepDeg)
+      : direction === 'right'
+        ? wrapLongitude(lon + stepDeg)
+        : lon;
+
+  return normalizeBordersView({
+    ...normalized,
+    center: [nextLon, nextLat],
+  });
+};
+
+export const stepBordersBearing = (
+  view: BordersViewState,
+  deltaDeg: number,
+) => {
+  const normalized = normalizeBordersView(view);
+
+  return normalizeBordersView({
+    ...normalized,
+    bearing: normalized.bearing + deltaDeg,
+  });
+};
+
+export const stepBordersPitch = (
+  view: BordersViewState,
+  deltaDeg: number,
+) => {
+  const normalized = normalizeBordersView(view);
+
+  return normalizeBordersView({
+    ...normalized,
+    pitch: normalized.pitch + deltaDeg,
+  });
+};
+
+export const stepBordersZoom = (view: BordersViewState, delta: number) => {
+  const normalized = normalizeBordersView(view);
+
+  return normalizeBordersView({
     ...normalized,
     zoom: normalized.zoom + delta,
   });

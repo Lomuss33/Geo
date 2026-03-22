@@ -7,12 +7,12 @@ import {
 import type {
   AnimationBlock,
   AnimationTimeline,
-  ViewerMode,
+  AnimationMode,
 } from '../state/viewerStore';
 
 type AnimationTimelineProps = {
   draft: AnimationTimeline;
-  viewerMode: ViewerMode;
+  viewerMode: AnimationMode;
   playheadMs: number;
   selectedBlockId: string | null;
   onPlayheadChange: (playheadMs: number) => void;

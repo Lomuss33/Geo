@@ -3,10 +3,12 @@ import {
   canPlayAnimationTimeline,
   countEnabledAnimationBlocks,
 } from '../lib/animation';
+import { BORDERS_PROFILES } from '../lib/bordersProfiles';
 import { deriveGeoPoseFields } from '../lib/navigation';
 import type {
   AnimationTimeline,
   AxisLockMode,
+  BordersProfileId,
   CompareModeState,
   HeadwayLayerKey,
   HeadwayLayerVisibility,
@@ -24,9 +26,11 @@ type ControlDockProps = {
   axisLockMode: AxisLockMode;
   compareModeState: CompareModeState;
   viewerMode: ViewerMode;
+  bordersProfileId: BordersProfileId;
   presets: ViewerPreset[];
   animationDraft: AnimationTimeline;
   onModeChange: (mode: ViewerMode) => void;
+  onBordersProfileChange: (profileId: BordersProfileId) => void;
   onQualityChange: (quality: QualityMode) => void;
   onHeadwayLayoutLookChange: (look: HeadwayLayoutLook) => void;
   onHeadwayLayerToggle: (layer: HeadwayLayerKey) => void;
@@ -41,15 +45,18 @@ type ControlDockProps = {
   onHelp: () => void;
   onToggleFrozen: () => void;
   onToggleBorders: () => void;
+  onToggleBordersPinpoints: () => void;
   shareLabel: string;
   isFrozen: boolean;
   showBorders: boolean;
+  showBordersPinpoints: boolean;
   isSceneAvailable: boolean;
   layoutMode: ViewportLayoutMode;
 };
 
 type ControlDockSection =
   | 'motion'
+  | 'profiles'
   | 'layout'
   | 'layers'
   | 'animation'
@@ -187,9 +194,11 @@ export function ControlDock({
   axisLockMode,
   compareModeState,
   viewerMode,
+  bordersProfileId,
   presets,
   animationDraft,
   onModeChange,
+  onBordersProfileChange,
   onQualityChange,
   onHeadwayLayoutLookChange,
   onHeadwayLayerToggle,
@@ -204,9 +213,11 @@ export function ControlDock({
   onHelp,
   onToggleFrozen,
   onToggleBorders,
+  onToggleBordersPinpoints,
   shareLabel,
   isFrozen,
   showBorders,
+  showBordersPinpoints,
   isSceneAvailable,
   layoutMode,
 }: ControlDockProps) {
@@ -217,6 +228,7 @@ export function ControlDock({
 
     return {
       motion: defaultOpen,
+      profiles: defaultOpen,
       layout: defaultOpen,
       layers: defaultOpen,
       animation: defaultOpen,
@@ -240,8 +252,14 @@ export function ControlDock({
           ? 'Pick country'
           : 'Compare';
   const enabledBlocks = countEnabledAnimationBlocks(animationDraft);
+  const isBordersMode = viewerMode === 'borders';
+  const isHeadwayMode = viewerMode === 'headway';
+  const isAnimationSupported = !isBordersMode;
   const canPlayAnimation =
-    isSceneAvailable && !isFrozen && canPlayAnimationTimeline(animationDraft);
+    isAnimationSupported &&
+    isSceneAvailable &&
+    !isFrozen &&
+    canPlayAnimationTimeline(animationDraft);
 
   return (
     <>
@@ -276,6 +294,15 @@ export function ControlDock({
               type="button"
             >
               Headway
+            </button>
+            <button
+              aria-selected={viewerMode === 'borders'}
+              className={`mode-switch__button ${viewerMode === 'borders' ? 'mode-switch__button--active' : ''}`}
+              onClick={() => onModeChange('borders')}
+              role="tab"
+              type="button"
+            >
+              Borders
             </button>
           </div>
         </div>
@@ -347,7 +374,7 @@ export function ControlDock({
       </section>
 
       <ControlDockSectionCard
-        description="Freeze and borders"
+        description={isBordersMode ? 'Freeze and pinpoints' : 'Freeze and borders'}
         id="control-dock-motion"
         isOpen={openSections.motion}
         onToggle={() => toggleSection('motion')}
@@ -363,16 +390,59 @@ export function ControlDock({
             >
               {isFrozen ? 'Unfreeze' : 'Freeze'}
             </button>
-            <button
-              className={`secondary-button ${showBorders ? 'secondary-button--active' : ''}`}
-              disabled={!isSceneAvailable}
-              onClick={onToggleBorders}
-              type="button"
-            >
-              {showBorders ? 'Hide borders' : 'Borders'}
-            </button>
+            {isBordersMode ? (
+              <button
+                className={`secondary-button ${showBordersPinpoints ? 'secondary-button--active' : ''}`}
+                disabled={!isSceneAvailable}
+                onClick={onToggleBordersPinpoints}
+                type="button"
+              >
+                {showBordersPinpoints ? 'Hide pinpoints' : 'Pinpoints'}
+              </button>
+            ) : (
+              <button
+                className={`secondary-button ${showBorders ? 'secondary-button--active' : ''}`}
+                disabled={!isSceneAvailable}
+                onClick={onToggleBorders}
+                type="button"
+              >
+                {showBorders ? 'Hide borders' : 'Borders'}
+              </button>
+            )}
           </div>
         </div>
+      </ControlDockSectionCard>
+
+      <ControlDockSectionCard
+        description="Switch Borders thematic profiles"
+        id="control-dock-profiles"
+        isOpen={openSections.profiles}
+        onToggle={() => toggleSection('profiles')}
+        title="Profiles"
+      >
+        {isBordersMode ? (
+          <div className="preset-list">
+            {BORDERS_PROFILES.map((profile) => (
+              <button
+                aria-pressed={bordersProfileId === profile.id}
+                className={`preset-button ${bordersProfileId === profile.id ? 'preset-button--active' : ''}`}
+                disabled={!isSceneAvailable}
+                key={profile.id}
+                onClick={() => onBordersProfileChange(profile.id)}
+                type="button"
+              >
+                <span className="preset-button__title">
+                  <span>{profile.label}</span>
+                </span>
+                <small>{profile.description}</small>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="field field--section">
+            <small>Profiles are available in Borders mode.</small>
+          </div>
+        )}
       </ControlDockSectionCard>
 
       <ControlDockSectionCard
@@ -382,7 +452,7 @@ export function ControlDock({
         onToggle={() => toggleSection('layout')}
         title="Layout"
       >
-        {viewerMode === 'headway' ? (
+        {isHeadwayMode ? (
           <div className="preset-list">
             {HEADWAY_LAYOUT_LOOKS.map((look) => (
               <button
@@ -414,7 +484,7 @@ export function ControlDock({
         onToggle={() => toggleSection('layers')}
         title="Layers"
       >
-        {viewerMode === 'headway' ? (
+        {isHeadwayMode ? (
           <div className="field field--section">
             <div className="button-row">
               {HEADWAY_LAYER_CONTROLS.map((layer) => (
@@ -445,27 +515,32 @@ export function ControlDock({
         title="Animation"
       >
         <div className="field field--section">
-          <div className="animation-summary">
-            <div className="animation-summary__meta">
-              <strong>
-                {viewerMode === 'geo' ? 'Geo timeline' : 'Headway timeline'}
-              </strong>
-              <small>
-                {formatDurationLabel(animationDraft.totalDurationMs)} total
-              </small>
+          {isBordersMode ? (
+            <small>Borders animation is not part of v1.</small>
+          ) : (
+            <div className="animation-summary">
+              <div className="animation-summary__meta">
+                <strong>
+                  {viewerMode === 'geo' ? 'Geo timeline' : 'Headway timeline'}
+                </strong>
+                <small>
+                  {formatDurationLabel(animationDraft.totalDurationMs)} total
+                </small>
+              </div>
+              <div className="animation-summary__meta">
+                <strong>{enabledBlocks}</strong>
+                <small>
+                  {enabledBlocks === 1 ? 'enabled block' : 'enabled blocks'}
+                  {' / '}
+                  {formatStartPoseLabel(animationDraft)}
+                </small>
+              </div>
             </div>
-            <div className="animation-summary__meta">
-              <strong>{enabledBlocks}</strong>
-              <small>
-                {enabledBlocks === 1 ? 'enabled block' : 'enabled blocks'}
-                {' / '}
-                {formatStartPoseLabel(animationDraft)}
-              </small>
-            </div>
-          </div>
+          )}
           <div className="button-row">
             <button
               className="secondary-button"
+              disabled={!isAnimationSupported}
               onClick={onOpenAnimationWorkspace}
               type="button"
             >

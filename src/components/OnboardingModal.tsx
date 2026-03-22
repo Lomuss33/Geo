@@ -13,7 +13,7 @@ export function OnboardingModal({ open, onDismiss }: OnboardingModalProps) {
       <section className="onboarding-panel" aria-labelledby="onboarding-title">
         <p className="panel-kicker">Flight brief</p>
         <h2 id="onboarding-title">3D Earth navigation with shared controls.</h2>
-        <p>
+        <p className="onboarding-panel__summary">
           Drag freely to orbit the globe like a trackball. Turn on
           <kbd>Axis lock</kbd> in the control deck if you want one-axis drags,
           use right drag or <kbd>Shift</kbd> plus drag for roll, turn on
@@ -24,34 +24,44 @@ export function OnboardingModal({ open, onDismiss }: OnboardingModalProps) {
           available. Double-click any visible point to snap it to center when
           compare mode is off.
         </p>
-        <ul className="control-list">
+        <p className="onboarding-panel__summary">
+          Switch to <kbd>Borders</kbd> for a local atlas globe with GDP,
+          population, and hierarchy profiles. Click a country to focus it, zoom
+          deeper to reveal subdivision geometry where demo data exists, and use
+          the pinpoints toggle to swap thematic city markers on and off.
+        </p>
+        <ul className="control-list control-list--onboarding">
           <li>
             <span>Left drag</span>
-            <strong>Free orbit</strong>
+            <strong>Orbit</strong>
           </li>
           <li>
             <span>Right drag / Shift+drag</span>
-            <strong>Roll camera</strong>
+            <strong>Roll</strong>
           </li>
           <li>
             <span>Mouse wheel</span>
-            <strong>Zoom in and out</strong>
+            <strong>Zoom</strong>
           </li>
           <li>
             <span>Axis lock button</span>
-            <strong>One-axis drag mode</strong>
+            <strong>Single-axis drag</strong>
           </li>
           <li>
             <span>Compare + click</span>
-            <strong>Pin a live outline for a visible country</strong>
+            <strong>Pin a live country outline</strong>
           </li>
           <li>
             <span>Double-click</span>
-            <strong>Center clicked location when compare is off</strong>
+            <strong>Center point when compare is off</strong>
           </li>
           <li>
             <span>Animation editor</span>
-            <strong>Locked camera with saved start pose</strong>
+            <strong>Locked camera, saved start pose</strong>
+          </li>
+          <li>
+            <span>Borders profile buttons</span>
+            <strong>GDP, population, or hierarchy globe</strong>
           </li>
           <li>
             <span>R</span>
@@ -63,7 +73,7 @@ export function OnboardingModal({ open, onDismiss }: OnboardingModalProps) {
           </li>
           <li>
             <span>Space / Y / Enter</span>
-            <strong>Freeze, axis lock, axis reset</strong>
+            <strong>Freeze, lock axis, reset axis</strong>
           </li>
           <li>
             <span>1-6</span>
@@ -71,7 +81,7 @@ export function OnboardingModal({ open, onDismiss }: OnboardingModalProps) {
           </li>
           <li>
             <span>Arrows / Shift / Ctrl / Alt</span>
-            <strong>Move, yaw, pitch, zoom, and roll</strong>
+            <strong>Move, yaw, pitch, zoom, roll</strong>
           </li>
         </ul>
         <button className="primary-button" onClick={onDismiss} type="button">

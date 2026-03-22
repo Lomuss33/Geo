@@ -16,9 +16,9 @@ import {
   deriveGeoPoseFields,
 } from '../lib/navigation';
 import type {
+  AnimationMode,
   AnimationCommandKey,
   AnimationTimeline as AnimationTimelineState,
-  ViewerMode,
 } from '../state/viewerStore';
 import { WorkspaceIconButton } from './WorkspaceIconButton';
 
@@ -26,7 +26,7 @@ type AnimationWorkspaceProps = {
   open: boolean;
   phase: 'idle' | 'playing';
   workspaceMode: WorkspaceMode;
-  viewerMode: ViewerMode;
+  viewerMode: AnimationMode;
   draft: AnimationTimelineState;
   playheadMs: number;
   importHex: string;

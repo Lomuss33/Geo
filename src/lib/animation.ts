@@ -24,12 +24,12 @@ import {
   stepHeadwayZoom,
 } from './navigation';
 import type {
+  AnimationMode,
   AnimationBlock,
   AnimationCommandKey,
   AnimationTimeline,
   GlobeViewState,
   HeadwayViewState,
-  ViewerMode,
 } from '../state/viewerStore';
 
 export type AnimationVector = {
@@ -104,13 +104,13 @@ const isFiniteHeadwayCenter = (
   value.length === 2 &&
   value.every((entry) => Number.isFinite(entry));
 
-const isViewerMode = (value: unknown): value is ViewerMode =>
+const isAnimationMode = (value: unknown): value is AnimationMode =>
   value === 'geo' || value === 'headway';
 
 const isCommandKey = (value: unknown): value is AnimationCommandKey =>
   typeof value === 'string' && COMMAND_SET.has(value as AnimationCommandKey);
 
-const getCommandSet = (mode: ViewerMode) =>
+const getCommandSet = (mode: AnimationMode) =>
   mode === 'geo' ? GEO_COMMAND_SET : HEADWAY_COMMAND_SET;
 
 const commandSign = (command: AnimationCommandKey) =>
@@ -257,7 +257,7 @@ export const createAnimationBlockId = () =>
   `animation-block-${nextAnimationBlockId++}`;
 
 export const createDefaultAnimationTimeline = (
-  mode: ViewerMode,
+  mode: AnimationMode,
 ): AnimationTimeline => ({
   version: 2,
   mode,
@@ -268,16 +268,16 @@ export const createDefaultAnimationTimeline = (
   blocks: [],
 });
 
-export const getAnimationStorageKey = (mode: ViewerMode) =>
+export const getAnimationStorageKey = (mode: AnimationMode) =>
   mode === 'geo'
     ? STORAGE_KEYS.animationDraftGeo
     : STORAGE_KEYS.animationDraftHeadway;
 
 export const normalizeAnimationTimeline = (
   candidate: Partial<AnimationTimeline> | null | undefined,
-  fallbackMode: ViewerMode = 'geo',
+  fallbackMode: AnimationMode = 'geo',
 ): AnimationTimeline => {
-  const mode = isViewerMode(candidate?.mode) ? candidate.mode : fallbackMode;
+  const mode = isAnimationMode(candidate?.mode) ? candidate.mode : fallbackMode;
   const totalDurationMs = normalizeDurationMs(candidate?.totalDurationMs);
   const commandSet = getCommandSet(mode);
   const startGeoView =
@@ -394,7 +394,7 @@ export const deserializeAnimationTimeline = (hex: string) => {
   try {
     const parsed = JSON.parse(decoded) as {
       v?: number;
-      m?: ViewerMode;
+      m?: AnimationMode;
       t?: number;
       g?: {
         d?: number;
@@ -419,7 +419,7 @@ export const deserializeAnimationTimeline = (hex: string) => {
 
     if (
       (parsed.v !== 1 && parsed.v !== 2) ||
-      !isViewerMode(parsed.m) ||
+      !isAnimationMode(parsed.m) ||
       !Number.isFinite(parsed.t) ||
       !Array.isArray(parsed.b)
     ) {

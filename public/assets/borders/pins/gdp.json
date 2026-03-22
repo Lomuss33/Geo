@@ -1,0 +1,92 @@
+[
+  {
+    "id": "new-york",
+    "name": "New York",
+    "countryIso3": "USA",
+    "coordinates": [
+      -74.006,
+      40.7128
+    ]
+  },
+  {
+    "id": "london",
+    "name": "London",
+    "countryIso3": "GBR",
+    "coordinates": [
+      -0.1276,
+      51.5072
+    ]
+  },
+  {
+    "id": "tokyo",
+    "name": "Tokyo",
+    "countryIso3": "JPN",
+    "coordinates": [
+      139.6917,
+      35.6895
+    ]
+  },
+  {
+    "id": "shanghai",
+    "name": "Shanghai",
+    "countryIso3": "CHN",
+    "coordinates": [
+      121.4737,
+      31.2304
+    ]
+  },
+  {
+    "id": "singapore",
+    "name": "Singapore",
+    "countryIso3": "SGP",
+    "coordinates": [
+      103.8198,
+      1.3521
+    ]
+  },
+  {
+    "id": "dubai",
+    "name": "Dubai",
+    "countryIso3": "ARE",
+    "coordinates": [
+      55.2708,
+      25.2048
+    ]
+  },
+  {
+    "id": "frankfurt",
+    "name": "Frankfurt",
+    "countryIso3": "DEU",
+    "coordinates": [
+      8.6821,
+      50.1109
+    ]
+  },
+  {
+    "id": "mumbai",
+    "name": "Mumbai",
+    "countryIso3": "IND",
+    "coordinates": [
+      72.8777,
+      19.076
+    ]
+  },
+  {
+    "id": "sao-paulo",
+    "name": "Sao Paulo",
+    "countryIso3": "BRA",
+    "coordinates": [
+      -46.6333,
+      -23.5505
+    ]
+  },
+  {
+    "id": "sydney",
+    "name": "Sydney",
+    "countryIso3": "AUS",
+    "coordinates": [
+      151.2093,
+      -33.8688
+    ]
+  }
+]

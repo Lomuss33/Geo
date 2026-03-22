@@ -6,11 +6,20 @@ export function LoadingOverlay() {
   const headwayRenderState = useViewerStore(
     (state) => state.headwayRenderState,
   );
+  const bordersRenderState = useViewerStore(
+    (state) => state.bordersRenderState,
+  );
   const loadState = useViewerStore((state) => state.loadState);
   const renderState = useViewerStore((state) => state.renderState);
   const message = useMemo(() => {
     if (viewerMode === 'headway') {
       return headwayRenderState === 'loading' ? 'Initializing Headway globe' : '';
+    }
+
+    if (viewerMode === 'borders') {
+      return bordersRenderState === 'loading'
+        ? 'Initializing Borders atlas globe'
+        : '';
     }
 
     if (renderState === 'initializing') {
@@ -31,10 +40,14 @@ export function LoadingOverlay() {
       default:
         return '';
     }
-  }, [headwayRenderState, loadState, renderState, viewerMode]);
+  }, [bordersRenderState, headwayRenderState, loadState, renderState, viewerMode]);
 
   if (viewerMode === 'headway') {
     if (headwayRenderState !== 'loading') {
+      return null;
+    }
+  } else if (viewerMode === 'borders') {
+    if (bordersRenderState !== 'loading') {
       return null;
     }
   } else if (

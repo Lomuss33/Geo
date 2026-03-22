@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent } from 'react';
 import { VIEWER_PRESETS } from '../lib/constants';
+import { normalizeBordersView } from '../lib/bordersBridge';
 import {
   applyHumanViewConstraint,
   deriveGeoCenteredAnchor,
@@ -12,8 +13,12 @@ import {
   normalizeHeadwayView,
 } from '../lib/modeBridge';
 import {
+  nudgeBordersCenter,
   nudgeGeoCenter,
   nudgeHeadwayCenter,
+  stepBordersBearing,
+  stepBordersPitch,
+  stepBordersZoom,
   stepGeoDistance,
   stepGeoPitch,
   stepGeoTrimRoll,
@@ -23,6 +28,7 @@ import {
   stepHeadwayZoom,
 } from '../lib/navigation';
 import type {
+  BordersViewState,
   GlobeViewState,
   HeadwayViewState,
   ViewerMode,
@@ -33,6 +39,7 @@ type ViewerShortcutsProps = {
   viewerMode: ViewerMode;
   view: GlobeViewState;
   headwayView: HeadwayViewState;
+  bordersView: BordersViewState;
   isAnimationPlaying: boolean;
   isAnimationWorkspaceOpen: boolean;
   isSceneAvailable: boolean;
@@ -48,6 +55,7 @@ type ViewerShortcutsProps = {
   onPresetSelect: (index: number) => void;
   onApplyGeoView: (view: GlobeViewState) => void;
   onApplyHeadwayView: (view: HeadwayViewState) => void;
+  onApplyBordersView: (view: BordersViewState) => void;
 };
 
 const isInteractiveTarget = (target: EventTarget | null) => {
@@ -66,6 +74,7 @@ export function ViewerShortcuts({
   viewerMode,
   view,
   headwayView,
+  bordersView,
   isAnimationPlaying,
   isAnimationWorkspaceOpen,
   isSceneAvailable,
@@ -81,6 +90,7 @@ export function ViewerShortcuts({
   onPresetSelect,
   onApplyGeoView,
   onApplyHeadwayView,
+  onApplyBordersView,
 }: ViewerShortcutsProps) {
   const geoOverviewAnchor = useViewerStore(
     (state) => state.geoOverviewAnchor,
@@ -241,6 +251,45 @@ export function ViewerShortcuts({
         }
 
         onApplyGeoView(nudgeGeoCenter(view, direction, 2.5));
+        return;
+      }
+
+      if (viewerMode === 'borders') {
+        if (event.altKey && (direction === 'left' || direction === 'right')) {
+          return;
+        }
+
+        if (event.shiftKey) {
+          if (direction === 'left' || direction === 'right') {
+            onApplyBordersView(
+              stepBordersBearing(
+                bordersView,
+                direction === 'left' ? -4 : 4,
+              ),
+            );
+            return;
+          }
+
+          onApplyBordersView(
+            stepBordersPitch(
+              bordersView,
+              direction === 'up' ? 3 : -3,
+            ),
+          );
+          return;
+        }
+
+        if (event.ctrlKey && (direction === 'up' || direction === 'down')) {
+          onApplyBordersView(
+            stepBordersZoom(bordersView, direction === 'up' ? 0.18 : -0.18),
+          );
+          return;
+        }
+
+        const nextView = normalizeBordersView(
+          nudgeBordersCenter(bordersView, direction, 2.5),
+        );
+        onApplyBordersView(nextView);
         return;
       }
 

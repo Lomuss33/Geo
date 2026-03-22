@@ -7,6 +7,7 @@ import {
 } from '../lib/animation';
 import { STORAGE_KEYS, DEFAULT_VIEW } from '../lib/constants';
 import { cloneView } from '../lib/math';
+import { cloneBordersView } from '../lib/bordersBridge';
 import { cloneHeadwayView } from '../lib/modeBridge';
 
 export type GlobeViewState = {
@@ -15,13 +16,31 @@ export type GlobeViewState = {
   fov: number;
 };
 
-export type ViewerMode = 'geo' | 'headway';
+export type AnimationMode = 'geo' | 'headway';
+export type ViewerMode = AnimationMode | 'borders';
 
 export type HeadwayViewState = {
   center: [lng: number, lat: number];
   zoom: number;
   bearing: number;
   pitch: number;
+};
+
+export type BordersProfileId = 'gdp' | 'population' | 'hierarchy';
+
+export type BordersViewState = {
+  center: [lng: number, lat: number];
+  zoom: number;
+  bearing: number;
+  pitch: number;
+};
+
+export type BordersSelectedFeature = {
+  iso3: string;
+  admLevel: 0 | 1 | 2;
+  featureId: string;
+  name: string;
+  metricValue: number | null;
 };
 
 export type ViewerPreset = {
@@ -90,7 +109,7 @@ export type AnimationBlock = {
 };
 export type AnimationTimeline = {
   version: 2;
-  mode: ViewerMode;
+  mode: AnimationMode;
   totalDurationMs: number;
   startGeoView: GlobeViewState | null;
   startHeadwayView: HeadwayViewState | null;
@@ -130,6 +149,7 @@ export type RenderState =
   | 'recovering'
   | 'failed';
 export type HeadwayRenderState = 'idle' | 'loading' | 'ready' | 'error';
+export type BordersRenderState = 'idle' | 'loading' | 'ready' | 'error';
 
 const EMPTY_TELEMETRY: HudTelemetry = {
   lat: 0,
@@ -140,6 +160,13 @@ const EMPTY_TELEMETRY: HudTelemetry = {
 };
 
 const DEFAULT_HEADWAY_VIEW: HeadwayViewState = {
+  center: [-28, 19.5],
+  zoom: 1.8,
+  bearing: 0,
+  pitch: 0,
+};
+
+const DEFAULT_BORDERS_VIEW: BordersViewState = {
   center: [-28, 19.5],
   zoom: 1.8,
   bearing: 0,
@@ -176,7 +203,7 @@ const cloneAnimationTimeline = (
   blocks: timeline.blocks.map((block) => ({ ...block })),
 });
 
-const getAnimationStorageKey = (mode: ViewerMode) =>
+const getAnimationStorageKey = (mode: AnimationMode) =>
   mode === 'geo'
     ? STORAGE_KEYS.animationDraftGeo
     : STORAGE_KEYS.animationDraftHeadway;
@@ -192,7 +219,7 @@ const persistAnimationDraft = (timeline: AnimationTimeline) => {
   );
 };
 
-export const readStoredAnimationDraft = (mode: ViewerMode) => {
+export const readStoredAnimationDraft = (mode: AnimationMode) => {
   if (typeof window === 'undefined') {
     return createDefaultAnimationTimeline(mode);
   }
@@ -213,6 +240,14 @@ type ViewerStore = {
   headwayView: HeadwayViewState;
   headwayRenderState: HeadwayRenderState;
   headwayErrorMessage: string | null;
+  bordersView: BordersViewState;
+  bordersRenderState: BordersRenderState;
+  bordersErrorMessage: string | null;
+  bordersNoticeMessage: string | null;
+  bordersProfileId: BordersProfileId;
+  bordersFocusedCountryIso: string | null;
+  bordersSelectedFeature: BordersSelectedFeature | null;
+  showBordersPinpoints: boolean;
   quality: QualityMode;
   headwayLayoutLook: HeadwayLayoutLook;
   headwayLayerVisibility: HeadwayLayerVisibility;
@@ -244,6 +279,15 @@ type ViewerStore = {
   setHeadwayView: (view: HeadwayViewState) => void;
   setHeadwayRenderState: (state: HeadwayRenderState) => void;
   setHeadwayErrorMessage: (message: string | null) => void;
+  setBordersView: (view: BordersViewState) => void;
+  setBordersRenderState: (state: BordersRenderState) => void;
+  setBordersErrorMessage: (message: string | null) => void;
+  setBordersNoticeMessage: (message: string | null) => void;
+  setBordersProfileId: (profileId: BordersProfileId) => void;
+  setBordersFocusedCountryIso: (iso3: string | null) => void;
+  setBordersSelectedFeature: (feature: BordersSelectedFeature | null) => void;
+  setShowBordersPinpoints: (enabled: boolean) => void;
+  toggleShowBordersPinpoints: () => void;
   setQuality: (quality: QualityMode) => void;
   setHeadwayLayoutLook: (look: HeadwayLayoutLook) => void;
   setHeadwayLayerVisibility: (visibility: Partial<HeadwayLayerVisibility>) => void;
@@ -319,6 +363,14 @@ export const useViewerStore = create<ViewerStore>((set) => ({
   headwayView: { ...DEFAULT_HEADWAY_VIEW },
   headwayRenderState: 'idle',
   headwayErrorMessage: null,
+  bordersView: { ...DEFAULT_BORDERS_VIEW },
+  bordersRenderState: 'idle',
+  bordersErrorMessage: null,
+  bordersNoticeMessage: null,
+  bordersProfileId: 'gdp',
+  bordersFocusedCountryIso: null,
+  bordersSelectedFeature: null,
+  showBordersPinpoints: true,
   quality: 'balanced',
   headwayLayoutLook: 'mission',
   headwayLayerVisibility: { ...DEFAULT_HEADWAY_LAYER_VISIBILITY },
@@ -353,6 +405,29 @@ export const useViewerStore = create<ViewerStore>((set) => ({
     }),
   setHeadwayRenderState: (headwayRenderState) => set({ headwayRenderState }),
   setHeadwayErrorMessage: (headwayErrorMessage) => set({ headwayErrorMessage }),
+  setBordersView: (bordersView) =>
+    set({
+      bordersView: cloneBordersView(bordersView),
+    }),
+  setBordersRenderState: (bordersRenderState) => set({ bordersRenderState }),
+  setBordersErrorMessage: (bordersErrorMessage) => set({ bordersErrorMessage }),
+  setBordersNoticeMessage: (bordersNoticeMessage) =>
+    set({ bordersNoticeMessage }),
+  setBordersProfileId: (bordersProfileId) => set({ bordersProfileId }),
+  setBordersFocusedCountryIso: (bordersFocusedCountryIso) =>
+    set({ bordersFocusedCountryIso }),
+  setBordersSelectedFeature: (bordersSelectedFeature) =>
+    set({
+      bordersSelectedFeature:
+        bordersSelectedFeature === null
+          ? null
+          : {
+              ...bordersSelectedFeature,
+            },
+    }),
+  setShowBordersPinpoints: (showBordersPinpoints) => set({ showBordersPinpoints }),
+  toggleShowBordersPinpoints: () =>
+    set((state) => ({ showBordersPinpoints: !state.showBordersPinpoints })),
   setQuality: (quality) => set({ quality }),
   setHeadwayLayoutLook: (headwayLayoutLook) => set({ headwayLayoutLook }),
   setHeadwayLayerVisibility: (visibility) =>

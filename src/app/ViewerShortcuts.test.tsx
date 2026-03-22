@@ -12,6 +12,12 @@ const baseProps = () => ({
     bearing: 0,
     pitch: 0,
   },
+  bordersView: {
+    center: [-28, 19.5] as [number, number],
+    zoom: 1.8,
+    bearing: 0,
+    pitch: 0,
+  },
   isAnimationPlaying: false,
   isAnimationWorkspaceOpen: false,
   isSceneAvailable: true,
@@ -27,6 +33,7 @@ const baseProps = () => ({
   onPresetSelect: vi.fn(),
   onApplyGeoView: vi.fn(),
   onApplyHeadwayView: vi.fn(),
+  onApplyBordersView: vi.fn(),
 });
 
 describe('ViewerShortcuts', () => {

@@ -26,7 +26,15 @@ npm run test:e2e
 - `R` resets the view.
 - In Geo compare mode, picking Brazil, Greenland, the UK, or Japan pins a live outline that stays registered to the country coastline while zooming.
 - While compare is pinned, left drag, right drag, and `Shift+drag` keep moving the globe and the pinned outline follows the country instead of staying screen-centered.
+- While compare is pinned, starting a drag directly over the projected outline still rotates the globe and the pinned outline follows the country.
+- While compare is pinned, starting a drag over the compare label copy still rotates the globe, while the compare buttons remain clickable.
+- While compare is pinned, starting a drag over empty gap space inside the action row still rotates the globe unless the pointer is directly on a button.
+- While compare is pinned on a mobile-width layout, the wrapped action row still only blocks direct button hits.
 - While compare is pinned, dragging the selected country behind the globe hides the projected outline and leaves the fallback compare chip usable.
+- While compare is pinned and the fallback chip is visible, starting a drag over the fallback copy still rotates the globe.
+- `Release outline` returns compare to `armed`.
+- `Done` returns compare to `off`.
+- `Cancel` from armed compare returns compare to `off`.
 - Opening the animation editor shows Geo start-pose fields for latitude, longitude, distance, roll, and FOV.
 - Large desktop viewports (`1600x900` or similar) open in dual-rail mode with both rails visible and a comfortable scene center.
 - Mid-size desktop/tablet viewports (`1366x768`, `1024x768`) use the compact single-rail shell so only one rail is open at a time.

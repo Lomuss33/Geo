@@ -59,14 +59,45 @@ export const viewFromLatLon = (
   };
 };
 
-export const DEFAULT_VIEW = viewFromLatLon(19.5, -28, DEFAULT_DISTANCE);
+const normalizeViewNorthUp = (view: GlobeViewState): GlobeViewState => {
+  const rotation = new Quaternion(
+    view.rotation[0],
+    view.rotation[1],
+    view.rotation[2],
+    view.rotation[3],
+  ).normalize();
+  const northOnScreen = SCREEN_UP.clone()
+    .applyQuaternion(rotation)
+    .projectOnPlane(FRONT_VECTOR);
+
+  if (northOnScreen.lengthSq() < 1e-6) {
+    return view;
+  }
+
+  northOnScreen.normalize();
+  const rollDeg = (Math.atan2(northOnScreen.x, northOnScreen.y) * 180) / Math.PI;
+  const correction = new Quaternion().setFromAxisAngle(
+    FRONT_VECTOR,
+    (rollDeg * Math.PI) / 180,
+  );
+  const corrected = correction.multiply(rotation).normalize();
+
+  return {
+    ...view,
+    rotation: corrected.toArray() as GlobeViewState['rotation'],
+  };
+};
+
+export const DEFAULT_VIEW = normalizeViewNorthUp(
+  viewFromLatLon(29.7, 34.2, DEFAULT_DISTANCE),
+);
 
 export const VIEWER_PRESETS: ViewerPreset[] = [
   {
     id: 'atlantic',
     label: 'Atlantic Drift',
     description: 'Balanced mission-control framing over the Atlantic corridor.',
-    state: DEFAULT_VIEW,
+    state: viewFromLatLon(19.5, -28, DEFAULT_DISTANCE),
   },
   {
     id: 'europe-africa',

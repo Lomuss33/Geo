@@ -3,6 +3,11 @@ import {
   createDefaultAnimationTimeline,
   serializeAnimationTimeline,
 } from '../src/lib/animation';
+import { DEFAULT_VIEW } from '../src/lib/constants';
+import {
+  serializeBordersViewState,
+  serializeViewState,
+} from '../src/lib/viewState';
 
 const dismissOnboardingIfVisible = async (
   page: import('@playwright/test').Page,
@@ -26,16 +31,17 @@ const primeDismissedOnboarding = async (
 
 const primeGeoAnimationDraft = async (
   page: import('@playwright/test').Page,
+  durationMs = 500,
 ) => {
   const hex = serializeAnimationTimeline({
     ...createDefaultAnimationTimeline('geo'),
-    totalDurationMs: 500,
+    totalDurationMs: durationMs,
     blocks: [
       {
         id: 'block-1',
         command: 'yaw+',
         startMs: 0,
-        endMs: 500,
+        endMs: durationMs,
         amount: 10,
         acceleration: 0.25,
         enabled: true,
@@ -84,6 +90,26 @@ const openViewpointsSection = async (page: import('@playwright/test').Page) => {
   if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
     await toggle.click();
   }
+};
+
+const waitForBordersBoundaries = async (
+  page: import('@playwright/test').Page,
+) => {
+  const bordersMap = page.locator('.borders-map');
+
+  await expect(bordersMap).toHaveAttribute('data-borders-state', 'ready', {
+    timeout: 15_000,
+  });
+  await expect
+    .poll(
+      async () =>
+        Number(
+          (await bordersMap.getAttribute('data-borders-rendered-features')) ??
+            '0',
+        ),
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThan(0);
 };
 
 test('loads the viewer shell', async ({ page }) => {
@@ -145,10 +171,14 @@ test('can switch into Headway mode without breaking the shell', async ({
   await page.goto('/');
   await dismissOnboardingIfVisible(page);
 
-  await expect(page.locator('.overlay-tab--left')).toBeVisible();
-  await expect(page.locator('.overlay-tab--right')).toBeVisible();
+  const openControlRailButton = page.getByRole('button', {
+    name: /open control rail/i,
+  });
 
-  await page.locator('.overlay-tab--right').click();
+  if ((await openControlRailButton.count()) > 0) {
+    await openControlRailButton.click();
+  }
+
   await page.getByRole('tab', { name: /headway/i }).click();
 
   const controlsPanel = page.getByLabel('Viewer controls');
@@ -183,6 +213,69 @@ test('can switch into Headway mode without breaking the shell', async ({
       { timeout: 10_000 },
     )
     .not.toBe('pending');
+});
+
+test('Borders mode shows the legend and restores profile and focus from a shareable URL', async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await primeDismissedOnboarding(page);
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+  const view = serializeViewState(DEFAULT_VIEW);
+  const map = serializeBordersViewState({
+    center: [-96, 37.8],
+    zoom: 2.7,
+    bearing: 16,
+    pitch: 22,
+  });
+
+  await page.goto(`/?mode=borders&view=${view}&map=${map}&profile=population&focus=USA`);
+  await dismissOnboardingIfVisible(page);
+  await waitForBordersBoundaries(page);
+
+  await expect(page.getByRole('tab', { name: /borders/i })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByLabel('Borders legend')).toBeVisible();
+  await expect(page.getByText(/profile: population/i)).toBeVisible();
+  await expect(
+    page
+      .getByLabel('View telemetry')
+      .getByText(/focus: united states \(usa\)/i),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: /hierarchy/i }).click();
+  await expect(page.getByText(/profile: hierarchy/i)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /pinpoints/i }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: /copy share link/i }).click();
+
+  const shareUrl = await page.evaluate(() => navigator.clipboard.readText());
+
+  expect(shareUrl).toContain('mode=borders');
+  expect(shareUrl).toContain('profile=hierarchy');
+  expect(shareUrl).toContain('focus=USA');
+
+  await page.goto(shareUrl);
+  await dismissOnboardingIfVisible(page);
+  await waitForBordersBoundaries(page);
+
+  await expect(page.getByRole('tab', { name: /borders/i })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByLabel('Borders legend')).toBeVisible();
+  await expect(page.getByText(/profile: hierarchy/i)).toBeVisible();
+  await expect(
+    page
+      .getByLabel('View telemetry')
+      .getByText(/focus: united states \(usa\)/i),
+  ).toBeVisible();
 });
 
 test('animation editor exposes the Geo start pose fields', async ({ page }) => {
@@ -257,7 +350,7 @@ test('help copy lists roll controls and no longer mentions trim pads', async ({
 
   await expect(page.getByText(/right drag \/ shift\+drag/i)).toBeVisible();
   await expect(
-    page.getByText(/locked camera with saved start pose/i),
+    page.getByText(/locked camera.*saved start pose/i),
   ).toBeVisible();
   await expect(page.getByText(/view trim pads/i)).toHaveCount(0);
 });
@@ -292,7 +385,7 @@ test('playback shows a stop control overlay and can be stopped', async ({
 }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await primeDismissedOnboarding(page);
-  await primeGeoAnimationDraft(page);
+  await primeGeoAnimationDraft(page, 5_000);
   await page.goto('/');
   await dismissOnboardingIfVisible(page);
 
@@ -325,16 +418,23 @@ test('monitor viewport stays fixed without page scrolling', async ({
 
   expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.innerHeight);
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth);
-  await expect(page.locator('.overlay-rail--left')).toBeVisible();
-  await expect(page.locator('.overlay-rail--right')).toBeVisible();
-  await page.getByRole('button', { name: /minimize status rail/i }).click();
-  await expect(page.locator('.overlay-rail--left')).toHaveClass(
-    /overlay-rail--collapsed/,
-  );
-  await page.getByRole('button', { name: /open status rail/i }).click();
-  await expect(page.locator('.overlay-rail--left')).toHaveClass(
-    /overlay-rail--open/,
-  );
+  const openStatusRailButton = page.getByRole('button', {
+    name: /open status rail/i,
+  });
+  const closeStatusRailButton = page.getByRole('button', {
+    name: /minimize status rail|close status rail/i,
+  });
+
+  if ((await closeStatusRailButton.count()) > 0) {
+    await closeStatusRailButton.click();
+    await expect(openStatusRailButton).toBeVisible();
+    await openStatusRailButton.click();
+    await expect(closeStatusRailButton).toBeVisible();
+  } else {
+    await expect(openStatusRailButton).toBeVisible();
+    await openStatusRailButton.click();
+    await expect(closeStatusRailButton).toBeVisible();
+  }
 });
 
 test('secondary control sections expand to reveal animation and viewpoint tools', async ({
@@ -370,10 +470,14 @@ test('single-rail viewport opens the control rail by default and never scrolls t
   expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.innerHeight);
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth);
 
-  await expect(page.locator('.overlay-tab--left')).toBeVisible();
-  await expect(page.locator('.overlay-tab--right')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /open status rail/i }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: /open control rail/i }),
+  ).toHaveCount(0);
   await expect(page.locator('.overlay-rail--left')).toHaveClass(
-    /overlay-rail--collapsed/,
+    /overlay-rail--open/,
   );
   await expect(page.locator('.overlay-rail--right')).toHaveClass(
     /overlay-rail--open/,
@@ -385,6 +489,9 @@ test('single-rail viewport opens the control rail by default and never scrolls t
   await expect(page.locator('.overlay-rail--right')).toHaveClass(
     /overlay-rail--collapsed/,
   );
+  await expect(
+    page.getByRole('button', { name: /open control rail/i }),
+  ).toBeVisible();
 });
 
 test('mobile viewport uses edge tabs and never scrolls the page', async ({
@@ -406,6 +513,8 @@ test('mobile viewport uses edge tabs and never scrolls the page', async ({
   await expect(page.locator('.overlay-rail--right')).toHaveClass(
     /overlay-rail--open/,
   );
+  await expect(page.locator('.overlay-tab--right')).toHaveCount(0);
+  await expect(page.locator('.overlay-tab--left')).toBeVisible();
   await expect(page.getByLabel('Viewer controls')).toBeVisible();
 });
 
@@ -417,11 +526,24 @@ test('tablet drawer viewport opens the control rail by default', async ({
   await page.goto('/');
   await dismissOnboardingIfVisible(page);
 
-  await expect(page.locator('.overlay-shell--tablet')).toBeVisible();
+  await expect(page.locator('.overlay-shell')).toHaveClass(
+    /overlay-shell--tablet/,
+    { timeout: 10_000 },
+  );
+  await expect(page.locator('.overlay-shell')).toHaveClass(
+    /overlay-shell--drawer/,
+    { timeout: 10_000 },
+  );
+  await expect(
+    page.getByRole('button', { name: /open status rail/i }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: /open control rail/i }),
+  ).toHaveCount(0);
   await expect(page.locator('.overlay-rail--right')).toHaveClass(
     /overlay-rail--open/,
   );
   await expect(page.locator('.overlay-rail--left')).toHaveClass(
-    /overlay-rail--collapsed/,
+    /overlay-rail--open/,
   );
 });
