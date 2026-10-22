@@ -53,6 +53,16 @@ npm run test:e2e
 
 ## Accessibility checks
 
+- Select Balkans / Europe / World without changing Geo / Headway / Borders mode.
+- Search by country code or alias (for example HRV / Hrvatska / Croatia); Tab to
+  the result and Enter to navigate. Typing must not trigger viewer shortcuts.
+- Croatia navigation from a distant globe approaches Croatia's surface anchor;
+  the latitude must not drift to North Africa during the camera transition.
+- Selecting Kosovo reports missing bundled globe-outline coverage and leaves
+  the camera unchanged. Regional and district coverage are shown separately.
+- Narrowing the scope retains in-scope explorer selections and explains cleared
+  out-of-scope selections. Frozen/playback state disables explorer navigation.
+
 - All visible controls are keyboard focusable.
 - Buttons have readable labels.
 - Reduced-motion mode removes non-essential motion.

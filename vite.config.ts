@@ -22,6 +22,8 @@ function getPagesBase() {
 
 export default defineConfig(({ mode }) => ({
   base: mode === 'pages' ? getPagesBase() : '/',
+  server: { port: 6000, strictPort: true },
+  preview: { port: 6001, strictPort: true },
   plugins: [react()],
   test: {
     environment: 'jsdom',

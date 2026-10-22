@@ -18,14 +18,14 @@ const HIERARCHY_STOPS = [
   { color: BORDERS_COLORS.hierarchyStops[3], label: 'Smallest districts' },
 ];
 
-export function BordersLegend({
+function BordersLegendContent({
   profileId,
   focusedCountryIso,
   focusedCountryName,
   noticeMessage,
 }: BordersLegendProps) {
   const [metricValues, setMetricValues] = useState<number[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(profileId !== 'hierarchy');
   const [loadError, setLoadError] = useState<string | null>(null);
   const profile = getBordersProfileDefinition(profileId);
 
@@ -33,16 +33,8 @@ export function BordersLegend({
     let cancelled = false;
 
     if (profileId === 'hierarchy') {
-      setMetricValues([]);
-      setLoadError(null);
-      setIsLoading(false);
-      return () => {
-        cancelled = true;
-      };
+      return;
     }
-
-    setIsLoading(true);
-    setLoadError(null);
 
     loadBordersMetrics(profileId)
       .then((payload) => {
@@ -53,7 +45,10 @@ export function BordersLegend({
         setMetricValues(
           payload.records
             .map((record) => record.value)
-            .filter((value): value is number => value != null && Number.isFinite(value)),
+            .filter(
+              (value): value is number =>
+                value != null && Number.isFinite(value),
+            ),
         );
         setIsLoading(false);
       })
@@ -62,7 +57,9 @@ export function BordersLegend({
           return;
         }
 
-        setLoadError(error instanceof Error ? error.message : 'Legend unavailable.');
+        setLoadError(
+          error instanceof Error ? error.message : 'Legend unavailable.',
+        );
         setMetricValues([]);
         setIsLoading(false);
       });
@@ -86,7 +83,9 @@ export function BordersLegend({
       {focusedCountryIso ? (
         <p className="telemetry-note">
           Focused country:{' '}
-          {focusedCountryName ? `${focusedCountryName} (${focusedCountryIso})` : focusedCountryIso}
+          {focusedCountryName
+            ? `${focusedCountryName} (${focusedCountryIso})`
+            : focusedCountryIso}
         </p>
       ) : null}
       {noticeMessage ? <p className="telemetry-note">{noticeMessage}</p> : null}
@@ -131,4 +130,9 @@ export function BordersLegend({
       )}
     </section>
   );
+}
+
+export function BordersLegend(props: BordersLegendProps) {
+  // Each profile owns its loading state; switching profiles cannot show old data.
+  return <BordersLegendContent key={props.profileId} {...props} />;
 }

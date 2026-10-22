@@ -20,15 +20,8 @@ import {
   MAX_DISTANCE,
   MIN_DISTANCE,
 } from '../lib/constants';
-import {
-  resolveRotationAxis,
-  rotationAngleFromDrag,
-} from '../lib/controls';
-import {
-  getRollDegrees,
-  latLonToVector3,
-  vector3ToLatLon,
-} from '../lib/geo';
+import { resolveRotationAxis, rotationAngleFromDrag } from '../lib/controls';
+import { getRollDegrees, latLonToVector3, vector3ToLatLon } from '../lib/geo';
 import {
   angleFromViewportCenter,
   clamp,
@@ -154,7 +147,8 @@ export function GlobeController({
   const previewGeoView = animationSession.previewGeoView;
   const isAnimationPlaying = animationSession.phase === 'playing';
   const isAnimationWorkspaceOpen = animationSession.workspaceOpen;
-  const isAnimationSessionActive = isAnimationWorkspaceOpen || isAnimationPlaying;
+  const isAnimationSessionActive =
+    isAnimationWorkspaceOpen || isAnimationPlaying;
 
   const currentViewRef = useRef<GlobeViewState>(cloneView(DEFAULT_VIEW));
   const targetViewRef = useRef<GlobeViewState>(cloneView(DEFAULT_VIEW));
@@ -181,7 +175,11 @@ export function GlobeController({
         headingDeg = deriveGeoOverviewHeading(view, anchor);
         setGeoOverviewAnchor(anchor);
         setGeoOverviewHeading(headingDeg);
-      } else if (anchor && linearZoomT <= 1e-4) {
+      } else if (
+        anchor &&
+        linearZoomT <= 1e-4 &&
+        getGeoLinearZoomT(useViewerStore.getState().targetView.distance) <= 1e-4
+      ) {
         clearGeoOverviewState();
         anchor = null;
         headingDeg = 0;
@@ -225,7 +223,9 @@ export function GlobeController({
   }, [applyImmediateView, constrainGeoView]);
 
   useEffect(() => {
-    targetViewRef.current = applyStoredOverviewConstraint(cloneView(targetView));
+    targetViewRef.current = applyStoredOverviewConstraint(
+      cloneView(targetView),
+    );
   }, [targetView]);
 
   useEffect(() => {
@@ -246,7 +246,9 @@ export function GlobeController({
         rect.height,
       );
 
-      if (Math.abs(fittedView.distance - currentViewRef.current.distance) < 1e-3) {
+      if (
+        Math.abs(fittedView.distance - currentViewRef.current.distance) < 1e-3
+      ) {
         return;
       }
 
@@ -333,23 +335,21 @@ export function GlobeController({
     },
   );
 
-  const setImmediateViewState = useEffectEvent(
-    (view: GlobeViewState) => {
-      const nextView = constrainGeoView(view, currentViewRef.current.distance);
+  const setImmediateViewState = useEffectEvent((view: GlobeViewState) => {
+    const nextView = constrainGeoView(view, currentViewRef.current.distance);
 
-      currentViewRef.current = cloneView(nextView);
-      targetViewRef.current = cloneView(nextView);
-      applyImmediateView(nextView);
+    currentViewRef.current = cloneView(nextView);
+    targetViewRef.current = cloneView(nextView);
+    applyImmediateView(nextView);
 
-      const encoded = serializeViewState(nextView);
-      if (encoded !== lastSerializedRef.current) {
-        if (liveSyncViewUrl) {
-          updateUrlWithView(nextView);
-        }
-        lastSerializedRef.current = encoded;
+    const encoded = serializeViewState(nextView);
+    if (encoded !== lastSerializedRef.current) {
+      if (liveSyncViewUrl) {
+        updateUrlWithView(nextView);
       }
-    },
-  );
+      lastSerializedRef.current = encoded;
+    }
+  });
 
   const releaseGesture = useEffectEvent(() => {
     gestureRef.current = { mode: 'idle' };
@@ -370,7 +370,8 @@ export function GlobeController({
     ) => {
       const deltaX = clientX - startX;
       const deltaY = clientY - startY;
-      const nextRotation = axis === 'x'
+      const nextRotation =
+        axis === 'x'
           ? new Quaternion()
               .setFromAxisAngle(
                 SCREEN_X_AXIS,
@@ -399,7 +400,10 @@ export function GlobeController({
       rect: DOMRect,
     ) => {
       const nextRotation = new Quaternion()
-        .setFromUnitVectors(startPoint, mapPointerToArcball(clientX, clientY, rect))
+        .setFromUnitVectors(
+          startPoint,
+          mapPointerToArcball(clientX, clientY, rect),
+        )
         .normalize()
         .multiply(startRotation.clone())
         .normalize();
@@ -464,20 +468,14 @@ export function GlobeController({
       const overviewState = resolveGeoOverviewState(currentView);
       const controlMode = getGeoControlMode(currentView.distance);
 
-      if (
-        controlMode === 'heading-spin' &&
-        overviewState.anchor
-      ) {
+      if (controlMode === 'heading-spin' && overviewState.anchor) {
         gestureRef.current = {
           mode: 'overview-heading-spin',
           startX: event.clientX,
           startAnchor: overviewState.anchor,
           startHeadingDeg: overviewState.headingDeg,
         };
-      } else if (
-        controlMode === 'surface-pan' &&
-        overviewState.anchor
-      ) {
+      } else if (controlMode === 'surface-pan' && overviewState.anchor) {
         gestureRef.current = {
           mode: 'overview-surface-pan',
           startX: event.clientX,
@@ -488,7 +486,11 @@ export function GlobeController({
       } else if (event.button === 2 || event.shiftKey) {
         gestureRef.current = {
           mode: 'roll',
-          startAngle: angleFromViewportCenter(event.clientX, event.clientY, getViewportRect()),
+          startAngle: angleFromViewportCenter(
+            event.clientX,
+            event.clientY,
+            getViewportRect(),
+          ),
           startRotation: currentRotation,
         };
       } else if (axisLockMode === 'axis-lock') {
@@ -663,7 +665,10 @@ export function GlobeController({
           const { lat, lon } = vector3ToLatLon(worldPoint);
           const country = findCountryByLatLon(lon, lat);
 
-          if (country && !(compareModeState === 'pinned' && country.id === selectedCountryId)) {
+          if (
+            country &&
+            !(compareModeState === 'pinned' && country.id === selectedCountryId)
+          ) {
             onCountryPick({
               id: country.id,
               name: country.name,
@@ -686,8 +691,7 @@ export function GlobeController({
       const compareZoomActive = compareModeState !== 'off';
       const distance = clamp(
         currentViewRef.current.distance +
-          event.deltaY *
-            (compareZoomActive ? COMPARE_ZOOM_STEP : 0.00125),
+          event.deltaY * (compareZoomActive ? COMPARE_ZOOM_STEP : 0.00125),
         compareZoomActive ? COMPARE_MIN_DISTANCE : MIN_DISTANCE,
         compareZoomActive ? COMPARE_MAX_DISTANCE : MAX_DISTANCE,
       );
@@ -797,7 +801,9 @@ export function GlobeController({
     let currentQuaternion = quaternionFromArray(current.rotation);
     const targetQuaternion = quaternionFromArray(target.rotation);
     const isDragging =
-      !isFrozen && !isAnimationSessionActive && gestureRef.current.mode !== 'idle';
+      !isFrozen &&
+      !isAnimationSessionActive &&
+      gestureRef.current.mode !== 'idle';
     const smoothing = quality === 'high' ? 8.5 : 7;
 
     if (
@@ -818,10 +824,7 @@ export function GlobeController({
       );
       current.fov = damp(current.fov, target.fov, smoothing, delta);
       current.rotation = quaternionToArray(currentQuaternion);
-      const constrainedCurrent = constrainGeoView(
-        current,
-        previousDistance,
-      );
+      const constrainedCurrent = constrainGeoView(current, previousDistance);
       current.rotation = [...constrainedCurrent.rotation];
       current.distance = constrainedCurrent.distance;
       current.fov = constrainedCurrent.fov;

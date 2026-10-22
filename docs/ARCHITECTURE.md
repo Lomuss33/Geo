@@ -1,5 +1,9 @@
 # Architecture
 
+This file describes the existing viewer. The planned studio domains and portable
+data/export requirements live in [STUDIO_CONTRACTS.md](STUDIO_CONTRACTS.md);
+[PRODUCT.md](PRODUCT.md) defines their user workflows and geographic scopes.
+
 ## High-level stack
 
 - UI shell: `React 19`
@@ -25,6 +29,15 @@
 - Double-click raycasts the sphere and animates the clicked point to screen center.
 
 ## State flow
+
+- `geography.ts` defines versioned scope membership, country/source identities,
+  search aliases, coverage, and mode-specific geographic frames.
+- `geographyStore.ts` keeps explorer scope and selection separate from renderer
+  state. `CountryExplorer.tsx` is memoized so viewer telemetry does not rerender
+  the full catalog every frame.
+- `geographyNavigation.ts` applies geographic frames using the active rendering
+  mode and keeps existing Pages view sharing intact. Close-zoom country requests
+  retain their surface anchor while approaching from the distant globe.
 
 - `viewerStore.ts` holds current view, target view, telemetry, quality mode, and UI flags.
 - `useViewportProfile.ts` derives the current shell mode, workspace mode, orientation, and legacy layout class from live viewport dimensions.

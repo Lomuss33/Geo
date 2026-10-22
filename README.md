@@ -2,6 +2,12 @@
 
 Geo is a cinematic 3D Earth viewer for GitHub Pages. It uses `React 19`, `TypeScript`, `Vite`, `Three.js`, and `React Three Fiber` to deliver a desktop-first globe that can be rotated on all three axes with a mouse.
 
+The next direction is a browser geography studio connecting **Explore, Learn, and
+Create**, focused on **Balkans, Europe, and World** scopes. See the
+[product brief](docs/PRODUCT.md), [roadmap](docs/ROADMAP.md), and
+[agent instructions](AGENTS.md). Studio project/data/media exports are planned,
+not current capabilities.
+
 ## Live target
 
 Deploy as a GitHub Pages project site:
@@ -18,6 +24,10 @@ Deploy as a GitHub Pages project site:
 - Cinematic HUD with live latitude, longitude, altitude, roll, and day/night status.
 - Fullscreen toggle and onboarding overlay.
 - Responsive layout that keeps desktop as the primary target.
+- Headway detailed map and Borders atlas with GDP/population profiles.
+- Country outline comparison and administrative boundary exploration.
+- Animation editor with saved start poses, playback, and timeline hex import/export.
+- Balkans / Europe / World catalog scopes, country search with aliases, and coverage-aware navigation.
 
 ## Local setup
 
@@ -30,7 +40,15 @@ Open the local Vite URL in Edge or another modern Chromium browser.
 
 Local development uses:
 
-`http://localhost:5173/`
+`http://localhost:6000/`
+
+`npm run preview` and `npm run test:e2e` use port `6001`; preview serves
+`http://localhost:6001/Geo/`. Both servers fail clearly if their configured port is
+occupied instead of silently moving to another port.
+
+Chromium-based browsers [block port `6000` by default](https://chromium.googlesource.com/chromium/src/+/master/net/base/port_util.cc). If you see
+`ERR_UNSAFE_PORT`, use `npm run dev -- --port 6001` for browser development.
+Stop preview before using that override. The configured dev default remains `6000`.
 
 ## Project commands
 
@@ -76,6 +94,10 @@ Notes:
 - `THIRD_PARTY.md`: code licenses and NASA attribution.
 - `docs/ARCHITECTURE.md`: rendering, control, and state flow.
 - `docs/ROADMAP.md`: milestones and deferred features.
+- `docs/PRODUCT.md`: studio purpose, geographic scopes, and first complete journey.
+- `docs/GEOGRAPHIC_SCOPES.md`: scope membership, identity mappings, and coverage limitations.
+- `docs/STUDIO_CONTRACTS.md`: proposed data, project, sharing, and export contracts.
+- `AGENTS.md`: repository guidance for agent work.
 - `docs/QA.md`: verification matrix and manual checks.
 - `docs/ASSETS.md`: exact Earth texture sources and replacement rules.
 - `docs/tasks/README.md`: how contributors claim work and close tasks.

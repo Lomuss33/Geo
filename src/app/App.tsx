@@ -14,6 +14,8 @@ import { AnimationWorkspace } from '../components/AnimationWorkspace';
 import { BrandPanel } from '../components/BrandPanel';
 import { BordersLegend } from '../components/BordersLegend';
 import { ControlDock } from '../components/ControlDock';
+import { CountryExplorer } from '../components/CountryExplorer';
+import { navigateGeography } from '../lib/geographyNavigation';
 import { CountryCompareOverlay } from '../components/CountryCompareOverlay';
 import { HudPanel } from '../components/HudPanel';
 import { LoadingOverlay } from '../components/LoadingOverlay';
@@ -551,7 +553,10 @@ function App() {
   }, [axisLockMode]);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEYS.headwayLayoutLook, headwayLayoutLook);
+    window.localStorage.setItem(
+      STORAGE_KEYS.headwayLayoutLook,
+      headwayLayoutLook,
+    );
   }, [headwayLayoutLook]);
 
   useEffect(() => {
@@ -646,8 +651,7 @@ function App() {
         viewerMode: nextMode,
         headwayView: nextMode === 'headway' ? nextHeadwayView : null,
         bordersView: nextMode === 'borders' ? nextBordersView : null,
-        bordersProfileId:
-          nextMode === 'borders' ? nextBordersProfileId : null,
+        bordersProfileId: nextMode === 'borders' ? nextBordersProfileId : null,
         bordersFocusedCountryIso:
           nextMode === 'borders' ? nextBordersFocusedCountryIso : null,
       });
@@ -844,7 +848,10 @@ function App() {
   ) => {
     if (nextMode === viewerMode) {
       if (options?.animationDraft && nextMode !== 'borders') {
-        loadDraftForMode(resolveAnimationMode(nextMode), options.animationDraft);
+        loadDraftForMode(
+          resolveAnimationMode(nextMode),
+          options.animationDraft,
+        );
       }
       return;
     }
@@ -876,13 +883,18 @@ function App() {
       setHeadwayView(nextHeadwayView);
       setHeadwayRenderState('loading');
       setViewerMode('headway');
-      loadDraftForMode(resolveAnimationMode('headway'), options?.animationDraft);
+      loadDraftForMode(
+        resolveAnimationMode('headway'),
+        options?.animationDraft,
+      );
       syncCurrentUrl('headway', view, nextHeadwayView);
       return;
     }
 
     const nextGeoView =
-      viewerMode === 'borders' ? geoFromBorders(bordersView) : geoFromHeadway(headwayView);
+      viewerMode === 'borders'
+        ? geoFromBorders(bordersView)
+        : geoFromHeadway(headwayView);
 
     clearGeoOverviewState();
     applyImmediateView(nextGeoView);
@@ -1337,7 +1349,13 @@ function App() {
     }
 
     return '';
-  }, [bordersRenderState, headwayRenderState, loadState, renderState, viewerMode]);
+  }, [
+    bordersRenderState,
+    headwayRenderState,
+    loadState,
+    renderState,
+    viewerMode,
+  ]);
 
   const isSceneAvailable =
     viewerMode === 'geo'
@@ -1359,7 +1377,10 @@ function App() {
     }
 
     const animationMode = resolveAnimationMode(viewerMode);
-    loadDraftForMode(animationMode, createDefaultAnimationTimeline(animationMode));
+    loadDraftForMode(
+      animationMode,
+      createDefaultAnimationTimeline(animationMode),
+    );
     setAnimationImportError(null);
     setAnimationPlayhead(0);
   };
@@ -1587,16 +1608,16 @@ function App() {
           ? 'Borders paused'
           : 'Borders atlas'
       : viewerMode === 'headway'
-      ? headwayRenderState === 'error'
-        ? 'Headway offline'
-        : 'Headway live'
-      : renderState === 'failed'
-        ? 'Renderer offline'
-        : isFrozen
-          ? 'Geo paused'
-          : telemetry.sunlit
-            ? 'Geo sunlit'
-            : 'Geo night';
+        ? headwayRenderState === 'error'
+          ? 'Headway offline'
+          : 'Headway live'
+        : renderState === 'failed'
+          ? 'Renderer offline'
+          : isFrozen
+            ? 'Geo paused'
+            : telemetry.sunlit
+              ? 'Geo sunlit'
+              : 'Geo night';
   const handleOpenLeftRail = () => {
     dispatchRailState({ type: 'open-left', shellMode, layoutMode });
   };
@@ -1660,6 +1681,13 @@ function App() {
 
   const rightRailContent = (
     <ControlDock
+      geographyControls={
+        <CountryExplorer
+          countryIndex={bordersCountryIndex}
+          onNavigate={navigateGeography}
+          disabled={isFrozen || isAnimationPlaying}
+        />
+      }
       animationDraft={animationDraft}
       axisLockMode={axisLockMode}
       bordersProfileId={bordersProfileId}

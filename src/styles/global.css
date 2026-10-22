@@ -270,12 +270,18 @@ textarea {
 
 .overlay-rail--left {
   left: max(var(--shell-gutter), env(safe-area-inset-left));
-  width: min(var(--overlay-left-width), calc(100dvw - (var(--shell-gutter) * 2)));
+  width: min(
+    var(--overlay-left-width),
+    calc(100dvw - (var(--shell-gutter) * 2))
+  );
 }
 
 .overlay-rail--right {
   right: max(var(--shell-gutter), env(safe-area-inset-right));
-  width: min(var(--overlay-right-width), calc(100dvw - (var(--shell-gutter) * 2)));
+  width: min(
+    var(--overlay-right-width),
+    calc(100dvw - (var(--shell-gutter) * 2))
+  );
 }
 
 .overlay-rail--collapsed.overlay-rail--left {
@@ -373,8 +379,16 @@ textarea {
 
 .borders-map {
   background:
-    radial-gradient(circle at center, rgba(61, 124, 176, 0.16), transparent 42%),
-    radial-gradient(circle at 50% 68%, rgba(12, 65, 107, 0.28), transparent 56%),
+    radial-gradient(
+      circle at center,
+      rgba(61, 124, 176, 0.16),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 50% 68%,
+      rgba(12, 65, 107, 0.28),
+      transparent 56%
+    ),
     linear-gradient(180deg, #050c17 0%, #02060d 100%);
 }
 
@@ -2107,7 +2121,11 @@ kbd {
   border-radius: 1rem;
   background:
     linear-gradient(180deg, rgba(10, 21, 38, 0.88), rgba(7, 14, 26, 0.84)),
-    radial-gradient(circle at top right, rgba(67, 164, 214, 0.12), transparent 48%);
+    radial-gradient(
+      circle at top right,
+      rgba(67, 164, 214, 0.12),
+      transparent 48%
+    );
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
   color: var(--text);
   pointer-events: none;
@@ -2171,7 +2189,11 @@ kbd {
   border-radius: 1rem;
   background:
     linear-gradient(180deg, rgba(8, 17, 31, 0.9), rgba(6, 12, 23, 0.86)),
-    radial-gradient(circle at top right, rgba(67, 164, 214, 0.1), transparent 52%);
+    radial-gradient(
+      circle at top right,
+      rgba(67, 164, 214, 0.1),
+      transparent 52%
+    );
   border: 1px solid rgba(132, 203, 255, 0.18);
   box-shadow: var(--shadow);
   color: var(--text);
@@ -2379,4 +2401,37 @@ kbd {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+.country-explorer__results {
+  display: grid;
+  gap: 0.3rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.15rem;
+  max-height: 11rem;
+  overflow-y: auto;
+}
+
+.country-explorer__results button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.country-explorer__results button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: rgba(74, 208, 255, 0.18);
+}
+
+.country-explorer__coverage {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  padding: 0.65rem 0;
+}
+
+.country-explorer__coverage p {
+  margin: 0.3rem 0;
 }
