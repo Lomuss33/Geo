@@ -17,10 +17,12 @@
   — development on 6000, preview/browser tests on 6001; lint, 189 tests, build,
   and 15 Chromium E2E tests passed; independent review pending.
 
+- [GEO-110 Observation provenance](review/GEO-110-observation-provenance.md)
+  — implemented; lint, 199 application tests, one data-builder test, production
+  build and 15 Chromium tests passed; independent review pending.
+
 ## Backlog and execution order
 
-- [GEO-110 Observation provenance](backlog/GEO-110-observation-provenance.md)
-  — after GEO-095.
 - [GEO-120 Projects and sharing](backlog/GEO-120-portable-projects.md)
   — after GEO-100 and GEO-110.
 - [GEO-130 Data exports](backlog/GEO-130-data-exports.md) — after GEO-120.

@@ -28,6 +28,7 @@ Deploy as a GitHub Pages project site:
 - Country outline comparison and administrative boundary exploration.
 - Animation editor with saved start poses, playback, and timeline hex import/export.
 - Balkans / Europe / World catalog scopes, country search with aliases, and coverage-aware navigation.
+- Validated GDP/population observations with source years, provenance, and mixed-year warnings.
 
 ## Local setup
 
@@ -96,6 +97,7 @@ Notes:
 - `docs/ROADMAP.md`: milestones and deferred features.
 - `docs/PRODUCT.md`: studio purpose, geographic scopes, and first complete journey.
 - `docs/GEOGRAPHIC_SCOPES.md`: scope membership, identity mappings, and coverage limitations.
+- `docs/OBSERVATIONS.md`: observation schema, source timestamps, and comparison policy.
 - `docs/STUDIO_CONTRACTS.md`: proposed data, project, sharing, and export contracts.
 - `AGENTS.md`: repository guidance for agent work.
 - `docs/QA.md`: verification matrix and manual checks.

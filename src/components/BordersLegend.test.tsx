@@ -36,6 +36,59 @@ describe('BordersLegend profile lifecycle', () => {
   });
   afterEach(cleanup);
 
+  it('shows mixed-year provenance and the focused observation year', async () => {
+    loadMetrics.mockResolvedValue({
+      schemaVersion: 1,
+      indicatorId: 'gdp',
+      indicator: 'GDP',
+      unit: 'current US$',
+      datasetVersion: 'fixture-v1',
+      source: {
+        name: 'World Bank Open Data',
+        url: 'https://data.worldbank.org/indicator/NY.GDP.MKTP.CD',
+        retrievedAt: '2026-03-22T00:00:00Z',
+        timestampBasis: 'download',
+      },
+      records: [
+        {
+          iso3: 'HRV',
+          name: 'Croatia',
+          value: 100,
+          year: 2023,
+          missingReason: null,
+        },
+        {
+          iso3: 'BIH',
+          name: 'Bosnia',
+          value: 50,
+          year: 2024,
+          missingReason: null,
+        },
+      ],
+    });
+    const { rerender } = render(
+      <BordersLegend {...props} profileId="gdp" focusedCountryIso="HRV" />,
+    );
+    expect(
+      await screen.findByText(/Mixed years; same-year comparisons unavailable/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Focused observation: 100 current US\$; year: 2023/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'World Bank Open Data' }),
+    ).toHaveAttribute(
+      'href',
+      'https://data.worldbank.org/indicator/NY.GDP.MKTP.CD',
+    );
+    rerender(
+      <BordersLegend {...props} profileId="gdp" focusedCountryIso="SRB" />,
+    );
+    expect(
+      screen.getByText('Focused country: no observation available.'),
+    ).toBeInTheDocument();
+  });
+
   it('renders hierarchy immediately without fetching metrics', () => {
     render(<BordersLegend {...props} profileId="hierarchy" />);
 

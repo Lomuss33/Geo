@@ -68,9 +68,9 @@ Existing: three rendering modes, URL-backed viewpoints, local animation drafts,
 saved start poses, command timelines, country outline comparison, administrative
 boundaries, GDP/population layers, unit/component tests, and Playwright coverage.
 
-Timeline hex export is not video export. The metric build currently discards
-observation years. Headway needs remote tiles. Search, studio project files,
-guided lessons, and media exports are planned.
+Timeline hex export is not video export. Country search and observation provenance
+are implemented; the metric build preserves source years. Headway needs remote
+tiles. Studio project files, guided lessons, and media exports remain planned.
 
 ## First-release boundaries
 

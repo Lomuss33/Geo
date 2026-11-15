@@ -312,6 +312,17 @@ test('Borders mode shows the legend and restores profile and focus from a sharea
     'true',
   );
   await expect(page.getByLabel('Borders legend')).toBeVisible();
+  await expect(
+    page
+      .getByLabel('Observation provenance')
+      .getByRole('link', { name: 'World Bank Open Data' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Observation provenance')).toContainText(
+    'Observation year:',
+  );
+  await expect(page.getByLabel('Observation provenance')).toContainText(
+    'Source snapshot:',
+  );
   await expect(page.getByText(/profile: population/i)).toBeVisible();
   await expect(
     page

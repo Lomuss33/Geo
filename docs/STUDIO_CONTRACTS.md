@@ -1,7 +1,8 @@
 # Proposed studio contracts
 
-Prepared in GEO-090. These are implementation requirements, not available APIs.
-Introduce runtime validators and fixtures in the dependent implementation tasks.
+Prepared in GEO-090. Project/export sections remain implementation requirements.
+GEO-110 implements observation validation and comparison policy as described in
+[OBSERVATIONS.md](OBSERVATIONS.md); other APIs remain planned.
 
 ## Domain boundaries
 
