@@ -2,9 +2,9 @@
 
 ## Status and authorization
 
-- State: in-progress
+- State: review (merged; implementer self-check complete, independent review pending)
 - Owner: Codex
-- Branch: `geo/geo-208-verified-integration`
+- Branch: `main`; integration branch `geo/geo-208-verified-integration` merged
 - Owner request, 2026-11-19: "now lets merge things and commit to github. do smart!"
 - Authorized: consolidate the prepared work, commit/push, create a PR and merge
   after checks pass. This is a bounded integration request, not continuing
@@ -21,10 +21,10 @@ code, required catalogs and guards together; keep product/evidence documentation
 and CI/release policy reviewable in a separate commit. Do not include caches,
 backups, dependencies, build output, credentials or quarantined historical data.
 
-GitHub Pages is currently configured for legacy branch-root publication while
-the repository contains a Vite deployment workflow. Align Pages with workflow
-publication and keep release dispatch explicit: merge is not a security or
-source-rights approval. Existing live content is not intentionally redeployed.
+At entry GitHub Pages used legacy branch-root publication while the repository
+contained a Vite deployment workflow. Pages now uses workflow publication and
+release dispatch is explicit: merge is not security or source-rights approval.
+Existing live content was not intentionally redeployed.
 CI on PR/main runs clean installation, guards, lint/unit/data/build, production
 Chromium, the development Chromium matrix and attribution canaries. Desktop
 Firefox evidence remains the locally observed GEO-194 run, not new Linux coverage.
@@ -33,17 +33,17 @@ Firefox evidence remains the locally observed GEO-194 run, not new Linux coverag
 
 - [x] Prepared work reviewed and private/generated/quarantined files excluded.
 - [x] Coherent commits pushed without rewriting existing local/remote history.
-- [ ] Exact integration tree passes local checks and GitHub PR CI.
-- [ ] PR merged into main only after checks pass; merge SHA and remote state recorded.
-- [ ] Pages publishing source/workflow aligned, automatic release held, and remaining gates explicit.
+- [x] Exact integration tree passes local checks and GitHub PR CI.
+- [x] PR merged into main only after checks pass; merge SHA and remote state recorded.
+- [x] Pages publishing source/workflow aligned, automatic release held, and remaining gates explicit.
 
 ## Evidence
 
-In progress. GitHub auth is available. Remote main was fetched and remains
-`877a6c5`; no open PR, no branch protection, no auto-merge setting. Pages reports
-`build_type: legacy`, source main/root. The latest custom Deploy Geo run failed
-while the separate legacy Pages publication succeeded. No new deployment or
-independent review is claimed.
+At entry remote main was `877a6c5`, with no open PR, branch protection or
+auto-merge setting. Pages reported `build_type: legacy`, source main/root; the
+latest custom deployment had failed while legacy publication succeeded.
+Final merged/check results are recorded below. No new deployment or independent
+review is claimed.
 
 Previous final local evidence is in [GEO-194](../review/GEO-194-regression-matrix.md):
 256 unit / 8 Node / 47 production Chromium / 40 dev Chromium+Firefox / 20 Pages
@@ -84,7 +84,7 @@ npm version adds exactly that optional dev peer and changes only 26 peer-role
 annotations; no existing package version, URL or integrity changes. Its tarball
 integrity matches registry metadata. Normal strict `npm ci --dry-run` under
 npm 11.19.1 passes, and the installed MapLibre hash verification still passes.
-Linux clean-install/test success remains pending on the repaired PR head.
+That initial repair was subsequently verified by the successful CI run below.
 
 CI and the manual release workflow now pin Node 24.22.3, as linked by the
 [official security release](https://nodejs.org/en/blog/vulnerability/november-2026-security-releases),
@@ -100,10 +100,11 @@ Chromium: the ubuntu-latest image had moved to 26.04, which Playwright 1.58.2
 does not support. Both CI and manual release jobs now pin Ubuntu 24.04, present
 in that installed Playwright version's dependency/host-platform tables. This
 keeps the verified browser package and uses its supported OS; no engine or data
-upgrade is hidden in the runner repair. Full remote browser checks remain pending.
+upgrade is hidden in the runner repair. The successful full run below closes the
+remote browser verification for this integration.
 
-- [ ] Integration scope and actual checks recorded.
-- [ ] Remote commits/PR/merge and release disposition verified.
+- [x] Integration scope and actual checks recorded.
+- [x] Remote commits/PR/merge and release disposition verified.
 - [ ] Independent review (separate from CI and implementer self-check).
 
 ## Handoff
@@ -122,10 +123,38 @@ original contrast, rectangle, selected-country and mobile 44px assertions remain
 the normal 30s test and 5s expectation limits are unchanged. Atlas dark-theme
 inheritance is now explicitly asserted before toggling light. Screenshots use
 per-test output paths. Local lint and all six focused production theme cases
-pass (28.9s total). The complete production suite now has 50 cases; full remote
-CI remains required before merge. Only test structure/documentation changed.
+pass (28.9s total). The complete production suite now has 50 cases. Only test
+structure/documentation changed in that repair.
 
-Finish integration and record exact GitHub URLs and commit/check outcomes.
-Preserve source review blocks and the MapLibre hash guards. Do not mark earlier
-tasks done merely because their code is merged. Next implementation is GEO-205;
-security maintenance remains GEO-207 before release.
+### Final remote verification and merge
+
+[CI run 44492505708](https://github.com/Lomuss33/Geo/actions/runs/44492505708)
+succeeded on exact PR head `0d522b71ed3d64f76cdfcf35b8101b33a02f3553`, using
+Ubuntu 24.04, Node 24.22.3 and npm 11.19.1:
+
+- Clean installation and the exact MapLibre backport succeeded.
+- Lint, 33 unit files / 256 tests, 8 Node tests, publication guard, TypeScript and
+  Pages build passed.
+- All 50 production Chromium cases, 20 development Chromium matrix cases and
+  3 optimized-dependency attribution cases passed.
+- The optional Macroscope correctness check was SKIPPED. It is not independent
+  reviewer approval; no comments/reviews blocked merge.
+
+[PR #1](https://github.com/Lomuss33/Geo/pull/1) was merged at
+2026-11-19 09:17:14 UTC as
+`f6ad04527651c625d18a54585f9799414a7cd259`, with a merge commit preserving the two
+earlier commits and all five integration/repair commits. The merge tree was
+verified identical to the tested PR head, and local main was fast-forwarded to
+origin/main. No force-push, branch deletion or historical rewrite was used.
+
+Pages read-back remains `build_type: workflow`, status `built`; the merged
+deployment workflow has only manual dispatch, restricted to main with explicit
+release-review confirmation. No deployment was dispatched. Source/security and
+physical-device gates remain open, and earlier tasks remain in review.
+
+The follow-up handoff changes only STATUS, TASKBOARD and this task's location/
+evidence. It receives documentation formatting/link/whitespace checks, not a
+claim of a new runtime test result. Runtime/test/workflow/data trees stay identical
+to the merged, CI-verified tree. Next implementation is GEO-205; GEO-207 remains
+before release. The bounded commit/merge request is fulfilled; future unrelated
+commits/pushes/publication still require their own authorization.
