@@ -36,7 +36,10 @@ because npm 11.19.1 required a missing optional WASM runtime peer lock entry.
 That lock-only repair adds one optional dev peer, preserves existing package
 versions/integrities and retains the security backport. CI/release workflows now
 pin Node 24.22.3, the documented security patch, instead of using the older runner
-cache. Local Node/PATH are unchanged. Await corrected-head CI before merging;
+cache. Local Node/PATH are unchanged. The next remote run passed clean install
+and the 256 unit / 8 Node checks, then failed because ubuntu-latest is now 26.04,
+unsupported by the pinned Playwright 1.58.2. CI and manual deployment now select
+supported Ubuntu 24.04 explicitly. Await corrected-head CI before merging;
 follow [GEO-208](tasks/in-progress/GEO-208-verified-integration.md) and PR #1.
 
 - GEO-190: owner constitution, reality audit, durable memory and executable backlog.

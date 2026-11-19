@@ -93,6 +93,15 @@ Node 24.11.1/PATH or close GEO-207's broader maintenance work.
 
 ## Self-check and reviewer verification
 
+The [second CI run](https://github.com/Lomuss33/Geo/actions/runs/44484457854)
+passed clean installation/backport application, lint, 256 unit / 8 Node tests,
+publication guard and Pages build on Node 24.22.3. It failed when installing
+Chromium: the ubuntu-latest image had moved to 26.04, which Playwright 1.58.2
+does not support. Both CI and manual release jobs now pin Ubuntu 24.04, present
+in that installed Playwright version's dependency/host-platform tables. This
+keeps the verified browser package and uses its supported OS; no engine or data
+upgrade is hidden in the runner repair. Full remote browser checks remain pending.
+
 - [ ] Integration scope and actual checks recorded.
 - [ ] Remote commits/PR/merge and release disposition verified.
 - [ ] Independent review (separate from CI and implementer self-check).
