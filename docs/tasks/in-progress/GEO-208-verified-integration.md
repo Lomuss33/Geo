@@ -32,7 +32,7 @@ Firefox evidence remains the locally observed GEO-194 run, not new Linux coverag
 ## Acceptance criteria
 
 - [x] Prepared work reviewed and private/generated/quarantined files excluded.
-- [ ] Coherent commits pushed without rewriting existing local/remote history.
+- [x] Coherent commits pushed without rewriting existing local/remote history.
 - [ ] Exact integration tree passes local checks and GitHub PR CI.
 - [ ] PR merged into main only after checks pass; merge SHA and remote state recorded.
 - [ ] Pages publishing source/workflow aligned, automatic release held, and remaining gates explicit.
@@ -70,6 +70,26 @@ read-back confirms workflow publication with existing site status `built`.
 No deployment was dispatched. This removes the legacy branch-root publication
 path before merging the new manual-only deployment workflow. Configuration
 follows [GitHub's publishing-source guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+
+PR: [#1](https://github.com/Lomuss33/Geo/pull/1). The first two integration commits
+are `f8dfd2d` (application/guards/tests) and `345aae9` (policy/docs/CI). Local source
+preservation, 116-file targeted formatting and 83 Markdown / 166 local links pass.
+The two retained commits and the new application commit were screened: 115
+changed historical blobs contain no credential patterns.
+
+The [first CI run](https://github.com/Lomuss33/Geo/actions/runs/44483769219) failed
+at clean installation, before tests: npm 11.19.1 (runner Node 24.22.2) required a
+missing optional `@emnapi/runtime@1.11.3` peer entry. Generating the lock with that
+npm version adds exactly that optional dev peer and changes only 26 peer-role
+annotations; no existing package version, URL or integrity changes. Its tarball
+integrity matches registry metadata. Normal strict `npm ci --dry-run` under
+npm 11.19.1 passes, and the installed MapLibre hash verification still passes.
+Linux clean-install/test success remains pending on the repaired PR head.
+
+CI and the manual release workflow now pin Node 24.22.3, as linked by the
+[official security release](https://nodejs.org/en/blog/vulnerability/november-2026-security-releases),
+instead of accepting the older cached runner artifact. This does not update local
+Node 24.11.1/PATH or close GEO-207's broader maintenance work.
 
 ## Self-check and reviewer verification
 

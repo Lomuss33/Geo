@@ -8,7 +8,9 @@ working code and checks, not the roadmap. See [owner vision](PRODUCT_VISION.md),
 
 - Working branch: `geo/geo-208-verified-integration`.
 - Prepared application work is committed as
-  `f8dfd2d76cd6886f885d3a50bc6944ec5548f7c5`; documentation/CI integration follows.
+  `f8dfd2d76cd6886f885d3a50bc6944ec5548f7c5`; documentation/CI is committed as
+  `345aae95e15413ebc7a92966090cc6210ea28ea1`. Both are pushed in
+  [integration PR #1](https://github.com/Lomuss33/Geo/pull/1).
   Earlier uncommitted work is preserved in ignored `.cache/geo-208/entry-work.zip`
   with a hash manifest, in addition to prior task snapshots. Inspect status before
   changing branches; historical task branches are aliases, not separate features.
@@ -29,8 +31,13 @@ findings. Public boundary assets are unchanged, and quarantined history remains
 ignored/outside the public tree. PR/main CI is being added before push; Pages
 release is manual, pending the existing source/security gates. Pages read-back
 now confirms workflow publication instead of legacy branch-root publication;
-no deployment was dispatched. Remote CI/merge
-outcomes will be recorded in [GEO-208](tasks/in-progress/GEO-208-verified-integration.md).
+no deployment was dispatched. The first remote install failed before testing
+because npm 11.19.1 required a missing optional WASM runtime peer lock entry.
+That lock-only repair adds one optional dev peer, preserves existing package
+versions/integrities and retains the security backport. CI/release workflows now
+pin Node 24.22.3, the documented security patch, instead of using the older runner
+cache. Local Node/PATH are unchanged. Await corrected-head CI before merging;
+follow [GEO-208](tasks/in-progress/GEO-208-verified-integration.md) and PR #1.
 
 - GEO-190: owner constitution, reality audit, durable memory and executable backlog.
 - GEO-191: first-party historical pilot held for component-rights review, preserved
