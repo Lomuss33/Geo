@@ -261,7 +261,12 @@ const applyHeadwayTheme = (
   const look = HEADWAY_LOOKS[headwayLayoutLook];
 
   safeSetPaint(map, 'background', 'background-color', look.background);
-  safeSetPaint(map, 'natural_earth', 'raster-opacity', look.naturalEarthOpacity);
+  safeSetPaint(
+    map,
+    'natural_earth',
+    'raster-opacity',
+    look.naturalEarthOpacity,
+  );
   safeSetPaint(map, 'water', 'fill-color', look.water);
   safeSetPaint(map, 'park', 'fill-color', look.park);
   safeSetPaint(map, 'park_outline', 'line-color', look.parkOutline);
@@ -273,8 +278,18 @@ const applyHeadwayTheme = (
   safeSetPaint(map, 'road_trunk_primary', 'line-color', look.primary);
   safeSetPaint(map, 'road_secondary_tertiary', 'line-color', look.secondary);
   safeSetPaint(map, 'building', 'fill-color', look.building);
-  safeSetPaint(map, 'building-3d', 'fill-extrusion-color', look.buildingExtrusion);
-  safeSetPaint(map, 'building-3d', 'fill-extrusion-opacity', look.buildingOpacity);
+  safeSetPaint(
+    map,
+    'building-3d',
+    'fill-extrusion-color',
+    look.buildingExtrusion,
+  );
+  safeSetPaint(
+    map,
+    'building-3d',
+    'fill-extrusion-opacity',
+    look.buildingOpacity,
+  );
   safeSetLayout(map, 'road_one_way_arrow', 'visibility', 'none');
   safeSetVisibility(map, 'highway-name-minor', look.showMinorRoadLabels);
   safeSetVisibility(map, 'poi_r7', look.showPoiWide);
@@ -348,8 +363,7 @@ const applyHeadwayLayerVisibility = (
   );
   setVisibilityByMatcher(
     map,
-    (layerId) =>
-      layerId.startsWith('poi_') || layerId === 'airport',
+    (layerId) => layerId.startsWith('poi_') || layerId === 'airport',
     visibility.pois,
   );
 };
@@ -431,7 +445,8 @@ export function HeadwayMap({
   const previewHeadwayView = animationSession.previewHeadwayView;
   const isAnimationPlaying = animationSession.phase === 'playing';
   const isAnimationWorkspaceOpen = animationSession.workspaceOpen;
-  const isAnimationSessionActive = isAnimationWorkspaceOpen || isAnimationPlaying;
+  const isAnimationSessionActive =
+    isAnimationWorkspaceOpen || isAnimationPlaying;
   const notifyLoading = useEffectEvent(onLoading);
   const notifyReady = useEffectEvent(onReady);
   const notifyError = useEffectEvent(onError);
@@ -472,7 +487,11 @@ export function HeadwayMap({
     applyHeadwayQuality(map, quality);
     applyHeadwayBorders(map, showBorders);
     applyHeadwayLayerVisibility(map, headwayLayerVisibility);
-    applyHeadwayInteractions(map, isFrozen || isAnimationSessionActive, axisLockMode);
+    applyHeadwayInteractions(
+      map,
+      isFrozen || isAnimationSessionActive,
+      axisLockMode,
+    );
   });
 
   const emitViewChange = useEffectEvent(() => {
@@ -491,17 +510,27 @@ export function HeadwayMap({
     notifyLoading();
     isLoadedRef.current = false;
 
-    const map = new maplibregl.Map({
-      attributionControl: false,
-      center: initialViewRef.current.center,
-      container: containerRef.current,
-      keyboard: false,
-      pitch: initialViewRef.current.pitch,
-      renderWorldCopies: false,
-      style: HEADWAY_STYLE_URL,
-      zoom: initialViewRef.current.zoom,
-      bearing: initialViewRef.current.bearing,
-    });
+    let map: MapLibreMap;
+    try {
+      map = new maplibregl.Map({
+        attributionControl: false,
+        center: initialViewRef.current.center,
+        container: containerRef.current,
+        keyboard: false,
+        pitch: initialViewRef.current.pitch,
+        renderWorldCopies: false,
+        style: HEADWAY_STYLE_URL,
+        zoom: initialViewRef.current.zoom,
+        bearing: initialViewRef.current.bearing,
+      });
+    } catch (error) {
+      notifyError(
+        error instanceof Error
+          ? error.message
+          : 'Headway could not initialize WebGL.',
+      );
+      return;
+    }
     mapRef.current = map;
 
     const bootTimeout = window.setTimeout(() => {
@@ -608,7 +637,11 @@ export function HeadwayMap({
       return;
     }
 
-    applyHeadwayInteractions(map, isFrozen || isAnimationSessionActive, axisLockMode);
+    applyHeadwayInteractions(
+      map,
+      isFrozen || isAnimationSessionActive,
+      axisLockMode,
+    );
   }, [axisLockMode, isAnimationSessionActive, isFrozen]);
 
   useEffect(() => {

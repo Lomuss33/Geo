@@ -48,6 +48,7 @@ const createProps = (
     showBorders: false,
     showBordersPinpoints: true,
     isSceneAvailable: true,
+    isSceneReady: true,
     layoutMode: 'monitor',
   };
 
@@ -55,6 +56,19 @@ const createProps = (
 };
 
 describe('ControlDock', () => {
+  it('waits for a ready renderer before opening the animation workspace', () => {
+    const props = createProps({ isSceneReady: false });
+    const { rerender } = render(<ControlDock {...props} />);
+    const editor = screen.getByRole('button', { name: 'Open editor' });
+    expect(editor).toBeDisabled();
+    fireEvent.click(editor);
+    expect(props.onOpenAnimationWorkspace).not.toHaveBeenCalled();
+    rerender(<ControlDock {...props} isSceneReady />);
+    expect(editor).toBeEnabled();
+    fireEvent.click(editor);
+    expect(props.onOpenAnimationWorkspace).toHaveBeenCalledTimes(1);
+  });
+
   it('starts with motion, animation, and viewpoints expanded on monitor', () => {
     render(<ControlDock {...createProps()} />);
 
@@ -77,7 +91,9 @@ describe('ControlDock', () => {
       screen.getByRole('button', { name: /toggle viewpoints section/i }),
     ).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: /freeze/i })).toBeInTheDocument();
-    expect(screen.getByText(/layout looks are available in headway mode/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/layout looks are available in headway mode/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /open editor/i }),
     ).toBeInTheDocument();
@@ -132,9 +148,15 @@ describe('ControlDock', () => {
     );
 
     expect(screen.getByText(/geo timeline/i)).toBeInTheDocument();
-    expect(screen.getByText(/layer toggles are available in headway mode/i)).toBeInTheDocument();
-    expect(screen.getByText(/profiles are available in borders mode/i)).toBeInTheDocument();
-    expect(screen.getByText(/layout looks are available in headway mode/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/layer toggles are available in headway mode/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/profiles are available in borders mode/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/layout looks are available in headway mode/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /open editor/i }),
     ).toBeInTheDocument();
@@ -200,9 +222,13 @@ describe('ControlDock', () => {
       />,
     );
 
-    const layoutSection = screen.getByRole('region', { name: /layout section/i });
+    const layoutSection = screen.getByRole('region', {
+      name: /layout section/i,
+    });
 
-    fireEvent.click(within(layoutSection).getByRole('button', { name: /daylight/i }));
+    fireEvent.click(
+      within(layoutSection).getByRole('button', { name: /daylight/i }),
+    );
 
     expect(
       within(layoutSection).getByRole('button', { name: /^mission/i }),
@@ -225,10 +251,16 @@ describe('ControlDock', () => {
       />,
     );
 
-    const layersSection = screen.getByRole('region', { name: /layers section/i });
+    const layersSection = screen.getByRole('region', {
+      name: /layers section/i,
+    });
 
-    fireEvent.click(within(layersSection).getByRole('button', { name: /^roads$/i }));
-    fireEvent.click(within(layersSection).getByRole('button', { name: /^parks$/i }));
+    fireEvent.click(
+      within(layersSection).getByRole('button', { name: /^roads$/i }),
+    );
+    fireEvent.click(
+      within(layersSection).getByRole('button', { name: /^parks$/i }),
+    );
 
     expect(onHeadwayLayerToggle).toHaveBeenCalledWith('roads');
     expect(onHeadwayLayerToggle).toHaveBeenCalledWith('parks');
@@ -250,7 +282,9 @@ describe('ControlDock', () => {
       />,
     );
 
-    const motionSection = screen.getByRole('region', { name: /motion section/i });
+    const motionSection = screen.getByRole('region', {
+      name: /motion section/i,
+    });
     const profilesSection = screen.getByRole('region', {
       name: /profiles section/i,
     });
@@ -262,7 +296,9 @@ describe('ControlDock', () => {
       within(motionSection).getByRole('button', { name: /^pinpoints$/i }),
     ).toBeInTheDocument();
     expect(
-      within(animationSection).getByText(/borders animation is not part of v1/i),
+      within(animationSection).getByText(
+        /borders animation is not part of v1/i,
+      ),
     ).toBeInTheDocument();
     expect(
       within(animationSection).getByRole('button', { name: /open editor/i }),

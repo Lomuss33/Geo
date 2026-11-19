@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "sourceEvidence": {
+    "observed": "2026-11-18",
+    "kind": "installed-asset-regression-baseline",
+    "worldAtlasVersion": "2.0.2",
+    "geometryScale": "Natural Earth 1:110m as packaged by world-atlas",
+    "geometryObservationYear": null,
+    "upstreamReleaseReview": "pending GEO-195",
+    "sources": [
+      {
+        "path": "public/assets/borders/country-index.json",
+        "sha256": "d2e753639659a028d8270077ac52c927009e779f43b25e3013e2286ee836d20b"
+      },
+      {
+        "path": "public/assets/borders/adm2-manifest.json",
+        "sha256": "ae49368231f3ddd52fb51b87da8fdb6db6c6b1bc54f6b3fca91d33f1f62e6ea0"
+      },
+      {
+        "path": "node_modules/world-atlas/countries-110m.json",
+        "sha256": "2516c915867c7baf18ddec727aec46c315541a07cfb3d79a6559b05d5e94eee8"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "neum-dubrovnik",
+      "countryIso3": ["HRV", "BIH"],
+      "automatedChecks": [
+        "catalog-coverage",
+        "country-camera",
+        "coarse-outline-projection"
+      ],
+      "fineGeometryReview": "pending GEO-195/GEO-196",
+      "limits": "Coastal corridor and country handoff; narrow coastline accuracy needs canonical source/topology review."
+    },
+    {
+      "id": "adriatic-islands-enclaves",
+      "countryIso3": ["HRV", "BIH"],
+      "automatedChecks": [
+        "catalog-coverage",
+        "country-camera",
+        "coarse-outline-projection"
+      ],
+      "fineGeometryReview": "pending GEO-195/GEO-196",
+      "limits": "Country multipart display; small islands/enclaves and holes need fine-scale source validation."
+    },
+    {
+      "id": "brcko",
+      "countryIso3": ["BIH"],
+      "automatedChecks": [
+        "catalog-coverage",
+        "country-camera",
+        "coarse-outline-projection"
+      ],
+      "fineGeometryReview": "pending GEO-195/GEO-196",
+      "limits": "Country navigation/coverage only; district boundaries and interpretations need pinned administrative sources."
+    },
+    {
+      "id": "sava-drina-una",
+      "countryIso3": ["BIH", "HRV", "SRB"],
+      "automatedChecks": [
+        "catalog-coverage",
+        "country-camera",
+        "coarse-outline-projection"
+      ],
+      "fineGeometryReview": "pending GEO-195/GEO-196",
+      "limits": "Neighbor-country handoff only; no approved river alignment/epoch fixture exists yet."
+    },
+    {
+      "id": "neretva-busko-jezero",
+      "countryIso3": ["BIH", "HRV"],
+      "automatedChecks": [
+        "catalog-coverage",
+        "country-camera",
+        "coarse-outline-projection"
+      ],
+      "fineGeometryReview": "pending GEO-195/GEO-196",
+      "limits": "Country context only; no approved dated hydrography/water-state fixture exists yet."
+    },
+    {
+      "id": "antimeridian",
+      "countryIso3": ["FJI"],
+      "automatedChecks": [
+        "catalog-coverage",
+        "country-camera",
+        "coarse-outline-projection"
+      ],
+      "fineGeometryReview": "pending GEO-195/GEO-196",
+      "limits": "Actual coarse Fiji geometry exercises wrapped longitude/camera/projection; seam/topology precision remains pending."
+    }
+  ]
+}

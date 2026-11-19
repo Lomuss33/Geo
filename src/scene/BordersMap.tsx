@@ -56,9 +56,12 @@ type BordersMapProps = {
 };
 
 const BORDERS_STYLE_URL = getBordersAssetUrl('style.json', { absolute: true });
-const BORDERS_TILE_URL = getBordersAssetUrl('tiles/boundaries/{z}/{x}/{y}.pbf', {
-  absolute: true,
-});
+const BORDERS_TILE_URL = getBordersAssetUrl(
+  'tiles/boundaries/{z}/{x}/{y}.pbf',
+  {
+    absolute: true,
+  },
+);
 const EMPTY_MANIFEST: BordersAdm2Manifest = {
   generatedAt: '',
   countries: [],
@@ -185,8 +188,9 @@ const getMetricValueForIso = (
 
   const normalizedIso = iso3.toUpperCase();
   return (
-    metrics.records.find((record) => record.iso3.toUpperCase() === normalizedIso)
-      ?.value ?? null
+    metrics.records.find(
+      (record) => record.iso3.toUpperCase() === normalizedIso,
+    )?.value ?? null
   );
 };
 
@@ -308,7 +312,7 @@ export function BordersMap({
       showCompass: true,
       showZoom: true,
     });
-      map.addControl(navigationControlRef.current, 'top-left');
+    map.addControl(navigationControlRef.current, 'top-left');
   });
   const confirmBoundariesRendered = useEffectEvent(() => {
     const map = mapRef.current;
@@ -417,7 +421,9 @@ export function BordersMap({
       (country) => country.iso3 === normalizedIso,
     );
 
-    notifyNotice(hasAdm2 ? null : `${normalizedIso} has no local district pack.`);
+    notifyNotice(
+      hasAdm2 ? null : `${normalizedIso} has no local district pack.`,
+    );
   });
 
   const refreshProfileAssets = useEffectEvent(async () => {
@@ -442,37 +448,8 @@ export function BordersMap({
     updatePinSource();
   });
 
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-
-    notifyLoading();
-    isLoadedRef.current = false;
-    didReportReadyRef.current = false;
-    didReportErrorRef.current = false;
-    setDebugState('loading');
-
-    const map = new maplibregl.Map({
-      attributionControl: false,
-      bearing: initialViewRef.current.bearing,
-      center: initialViewRef.current.center,
-      container: containerRef.current,
-      keyboard: false,
-      pitch: initialViewRef.current.pitch,
-      renderWorldCopies: false,
-      style: BORDERS_STYLE_URL,
-      zoom: initialViewRef.current.zoom,
-    });
-    mapRef.current = map;
-
-    const bootTimeout = window.setTimeout(() => {
-      if (!isLoadedRef.current) {
-        failBoundaryBoot('Borders view did not finish loading its local assets.');
-      }
-    }, 15_000);
-
-    const handleLoad = async () => {
+  const initializeMap = useEffectEvent(
+    async (map: MapLibreMap, bootTimeout: number) => {
       try {
         const [
           countryIndex,
@@ -491,6 +468,10 @@ export function BordersMap({
             ? Promise.resolve(null)
             : loadBordersPins(profileId),
         ]);
+
+        if (mapRef.current !== map) {
+          return;
+        }
 
         countryIndexRef.current = countryIndex;
         adm2ManifestRef.current = adm2Manifest;
@@ -561,15 +542,7 @@ export function BordersMap({
               focusedCountryIso,
             ) as never,
             'line-opacity': 0.92,
-            'line-width': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              0,
-              1.1,
-              6,
-              2,
-            ],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 0, 1.1, 6, 2],
           },
         });
         map.addLayer({
@@ -635,10 +608,16 @@ export function BordersMap({
         syncFocusNotice();
         clearRenderDeadline();
         renderDeadlineRef.current = window.setTimeout(() => {
-          failBoundaryBoot('Borders boundaries could not load their vector tiles.');
+          failBoundaryBoot(
+            'Borders boundaries could not load their vector tiles.',
+          );
         }, BOUNDARY_RENDER_TIMEOUT_MS);
         confirmBoundariesRendered();
       } catch (error) {
+        if (mapRef.current !== map) {
+          return;
+        }
+
         window.clearTimeout(bootTimeout);
         failBoundaryBoot(
           error instanceof Error
@@ -646,6 +625,106 @@ export function BordersMap({
             : 'Borders view could not load its local asset bundle.',
         );
       }
+    },
+  );
+
+  const handleMapClick = useEffectEvent((event: maplibregl.MapMouseEvent) => {
+    const map = mapRef.current;
+    if (!map || !isLoadedRef.current) {
+      return;
+    }
+    const features = map.queryRenderedFeatures(event.point, {
+      layers: ['borders-adm2-fill', 'borders-adm0-fill'],
+    });
+    const adm2Feature = features.find(
+      (feature) => feature.layer.id === 'borders-adm2-fill',
+    );
+
+    if (adm2Feature) {
+      const iso3 = getFeatureString(adm2Feature, 'iso3');
+      const featureId = getFeatureString(adm2Feature, 'featureId');
+      const name = getFeatureString(adm2Feature, 'name');
+
+      if (iso3 && featureId && name) {
+        onSelectFeature({
+          iso3,
+          admLevel: 2,
+          featureId,
+          name,
+          metricValue: getAdm2MetricValue(adm2Feature),
+        });
+        onFocusCountry(iso3);
+        return;
+      }
+    }
+
+    const adm0Feature = features.find(
+      (feature) => feature.layer.id === 'borders-adm0-fill',
+    );
+    if (adm0Feature) {
+      const iso3 = getFeatureString(adm0Feature, 'iso3');
+      const name = getFeatureString(adm0Feature, 'name');
+
+      if (iso3 && name) {
+        onFocusCountry(iso3);
+        onSelectFeature({
+          iso3,
+          admLevel: 0,
+          featureId: iso3,
+          name,
+          metricValue: getMetricValueForIso(metricPayloadRef.current, iso3),
+        });
+        return;
+      }
+    }
+
+    onSelectFeature(null);
+  });
+
+  useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    notifyLoading();
+    isLoadedRef.current = false;
+    didReportReadyRef.current = false;
+    didReportErrorRef.current = false;
+    setDebugState('loading');
+
+    let map: MapLibreMap;
+    try {
+      map = new maplibregl.Map({
+        attributionControl: false,
+        bearing: initialViewRef.current.bearing,
+        center: initialViewRef.current.center,
+        container: containerRef.current,
+        keyboard: false,
+        pitch: initialViewRef.current.pitch,
+        renderWorldCopies: false,
+        style: BORDERS_STYLE_URL,
+        zoom: initialViewRef.current.zoom,
+      });
+    } catch (error) {
+      failBoundaryBoot(
+        error instanceof Error
+          ? error.message
+          : 'Borders could not initialize WebGL.',
+      );
+      return;
+    }
+    mapRef.current = map;
+
+    const bootTimeout = window.setTimeout(() => {
+      if (!isLoadedRef.current) {
+        failBoundaryBoot(
+          'Borders view did not finish loading its local assets.',
+        );
+      }
+    }, 15_000);
+
+    const handleLoad = () => {
+      void initializeMap(map, bootTimeout);
     };
 
     const handleError = (event: { error?: unknown }) => {
@@ -660,55 +739,6 @@ export function BordersMap({
       }
 
       failBoundaryBoot('Borders boundaries could not load their vector tiles.');
-    };
-
-    const handleMapClick = (event: maplibregl.MapMouseEvent) => {
-      const features = map.queryRenderedFeatures(event.point, {
-        layers: ['borders-adm2-fill', 'borders-adm0-fill'],
-      });
-      const adm2Feature = features.find(
-        (feature) => feature.layer.id === 'borders-adm2-fill',
-      );
-
-      if (adm2Feature) {
-        const iso3 = getFeatureString(adm2Feature, 'iso3');
-        const featureId = getFeatureString(adm2Feature, 'featureId');
-        const name = getFeatureString(adm2Feature, 'name');
-
-        if (iso3 && featureId && name) {
-          onSelectFeature({
-            iso3,
-            admLevel: 2,
-            featureId,
-            name,
-            metricValue: getAdm2MetricValue(adm2Feature),
-          });
-          onFocusCountry(iso3);
-          return;
-        }
-      }
-
-      const adm0Feature = features.find(
-        (feature) => feature.layer.id === 'borders-adm0-fill',
-      );
-      if (adm0Feature) {
-        const iso3 = getFeatureString(adm0Feature, 'iso3');
-        const name = getFeatureString(adm0Feature, 'name');
-
-        if (iso3 && name) {
-          onFocusCountry(iso3);
-          onSelectFeature({
-            iso3,
-            admLevel: 0,
-            featureId: iso3,
-            name,
-            metricValue: getMetricValueForIso(metricPayloadRef.current, iso3),
-          });
-          return;
-        }
-      }
-
-      onSelectFeature(null);
     };
 
     map.on('load', handleLoad);

@@ -9,6 +9,77 @@ import {
   serializeViewState,
 } from '../src/lib/viewState';
 
+test('geography search supports keyboard selection and scope changes without switching mode', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await primeDismissedOnboarding(page);
+  await page.goto('./?mode=borders');
+  await waitForBordersBoundaries(page);
+  const explorer = page.getByRole('region', { name: 'Geography explorer' });
+  const scope = explorer.getByLabel('Geographic scope');
+  await scope.selectOption('balkans');
+  const search = explorer.getByLabel('Find a country');
+  await search.fill('Hrvatska');
+  await search.press('Tab');
+  await page.keyboard.press('Enter');
+  await expect(
+    explorer.getByRole('button', { name: 'Croatia HRV' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(explorer.getByText('Globe outline available.')).toBeVisible();
+  await expect(
+    page.getByRole('tab', { name: 'Borders', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/focus=HRV/);
+
+  await scope.selectOption('europe');
+  await expect(
+    explorer.getByRole('button', { name: 'Croatia HRV' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await scope.selectOption('world');
+  await search.fill('United States');
+  await explorer
+    .getByRole('button', { name: 'United States USA', exact: true })
+    .click();
+  await scope.selectOption('balkans');
+  await expect(explorer.getByText(/Previous selection cleared/)).toBeVisible();
+  await expect(search).toHaveValue('');
+  await expect(
+    explorer.getByRole('button', { name: /United States/ }),
+  ).toHaveCount(0);
+});
+
+test('country navigation preserves Geo and Headway modes and handles missing outlines', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await primeDismissedOnboarding(page);
+  await page.goto('./');
+  const explorer = page.getByRole('region', { name: 'Geography explorer' });
+  await explorer.getByLabel('Geographic scope').selectOption('balkans');
+  await explorer.getByLabel('Find a country').fill('Croatia');
+  await explorer.getByRole('button', { name: 'Croatia HRV' }).click();
+  await expect(
+    page.getByRole('tab', { name: 'Geo', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(
+    page.getByLabel('View telemetry').getByText(/^4[3-7]\.\d° N$/),
+  ).toBeVisible();
+  await page.getByRole('tab', { name: 'Headway', exact: true }).click();
+  await explorer.getByLabel('Find a country').fill('Bosnia');
+  await explorer
+    .getByRole('button', { name: 'Bosnia and Herzegovina BIH' })
+    .click();
+  await expect(
+    page.getByRole('tab', { name: 'Headway', exact: true }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await explorer.getByLabel('Find a country').fill('Kosovo');
+  await explorer.getByRole('button', { name: 'Kosovo XKX' }).click();
+  await expect(
+    explorer.getByText('No bundled globe outline; camera unchanged.'),
+  ).toBeVisible();
+});
+
 const dismissOnboardingIfVisible = async (
   page: import('@playwright/test').Page,
 ) => {
@@ -114,7 +185,6 @@ const waitForBordersBoundaries = async (
 
 test('loads the viewer shell', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
-  await primeDismissedOnboarding(page);
   await page.goto('/');
   await expect(page.locator('.overlay-rail--left')).toBeVisible();
   await expect(page.getByLabel('Viewer overview').first()).toBeVisible();
@@ -122,38 +192,35 @@ test('loads the viewer shell', async ({ page }) => {
   await expect(page.locator('.top-bar')).toHaveCount(0);
   await expect(page.locator('.overlay-rail--right')).toBeVisible();
 
-  const onboardingButton = page.getByRole('button', {
-    name: /enter viewport/i,
-  });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const canvas = page.locator('.scene-host canvas').first();
   const failedRendererHeading = page.getByRole('heading', {
     name: /3d renderer unavailable right now/i,
   });
-
   await expect
     .poll(
       async () => {
-        if (await onboardingButton.isVisible().catch(() => false)) {
-          return 'scene';
-        }
-
-        if (await failedRendererHeading.isVisible().catch(() => false)) {
-          return 'failed';
-        }
-
+        if (await canvas.isVisible()) return 'scene';
+        if (await failedRendererHeading.isVisible()) return 'failed';
         return 'pending';
       },
-      { timeout: 5_000 },
+      { timeout: 5000 },
     )
     .not.toBe('pending');
-
-  if ((await onboardingButton.isVisible().catch(() => false)) === true) {
-    await expect(onboardingButton).toBeVisible();
+  if (await canvas.isVisible()) {
+    await page
+      .getByRole('button', { name: /toggle motion section/i })
+      .scrollIntoViewIfNeeded();
     await expect(
       page.getByRole('button', { name: /toggle motion section/i }),
     ).toBeVisible();
+    await page
+      .getByRole('button', { name: /toggle animation section/i })
+      .scrollIntoViewIfNeeded();
     await expect(
       page.getByRole('button', { name: /toggle animation section/i }),
     ).toBeVisible();
+    await page.screenshot({ path: 'test-results/earth-opt-in-help.png' });
     return;
   }
 
@@ -231,7 +298,9 @@ test('Borders mode shows the legend and restores profile and focus from a sharea
     pitch: 22,
   });
 
-  await page.goto(`/?mode=borders&view=${view}&map=${map}&profile=population&focus=USA`);
+  await page.goto(
+    `/?mode=borders&view=${view}&map=${map}&profile=population&focus=USA`,
+  );
   await dismissOnboardingIfVisible(page);
   await waitForBordersBoundaries(page);
 
@@ -240,6 +309,17 @@ test('Borders mode shows the legend and restores profile and focus from a sharea
     'true',
   );
   await expect(page.getByLabel('Borders legend')).toBeVisible();
+  await expect(
+    page
+      .getByLabel('Observation provenance')
+      .getByRole('link', { name: 'World Bank Open Data' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Observation provenance')).toContainText(
+    'Observation year:',
+  );
+  await expect(page.getByLabel('Observation provenance')).toContainText(
+    'Source snapshot:',
+  );
   await expect(page.getByText(/profile: population/i)).toBeVisible();
   await expect(
     page
@@ -249,9 +329,7 @@ test('Borders mode shows the legend and restores profile and focus from a sharea
 
   await page.getByRole('button', { name: /hierarchy/i }).click();
   await expect(page.getByText(/profile: hierarchy/i)).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: /pinpoints/i }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /pinpoints/i })).toBeVisible();
 
   await page.getByRole('button', { name: /copy share link/i }).click();
 
@@ -301,7 +379,9 @@ test('animation editor exposes the Geo start pose fields', async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole('spinbutton', { name: /roll/i })).toBeVisible();
   await expect(page.getByRole('spinbutton', { name: /^fov$/i })).toBeVisible();
-  await expect(page.locator('.animation-workspace__helper[open]')).toHaveCount(0);
+  await expect(page.locator('.animation-workspace__helper[open]')).toHaveCount(
+    0,
+  );
 
   const frameBox = await frame.boundingBox();
   expect(frameBox).not.toBeNull();
@@ -372,9 +452,7 @@ test('compare mode can be armed and canceled from the overlay', async ({
       .getByText(/click a visible country to pin its live outline/i),
   ).toBeVisible();
 
-  await page
-    .getByRole('button', { name: /cancel compare mode/i })
-    .click();
+  await page.getByRole('button', { name: /cancel compare mode/i }).click();
 
   await expect(page.getByTestId('country-compare-armed')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^compare$/i })).toBeVisible();
@@ -546,4 +624,48 @@ test('tablet drawer viewport opens the control rail by default', async ({
   await expect(page.locator('.overlay-rail--left')).toHaveClass(
     /overlay-rail--open/,
   );
+});
+
+test('help is opt-in and its brief stays usable on short screens', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 500 });
+  await page.goto('/');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const rail = page.getByRole('button', {
+    name: 'Open control rail',
+    exact: true,
+  });
+  if (await rail.isVisible()) await rail.click();
+  const help = page.getByRole('button', { name: 'Help', exact: true });
+  await help.click();
+  const dialog = page.getByRole('dialog', { name: /3d earth navigation/i });
+  const enter = dialog.getByRole('button', { name: /enter viewport/i });
+  await expect(dialog).toBeVisible();
+  await expect(enter).toBeFocused();
+  const bounds = await enter.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(500);
+  const theme = dialog.getByRole('button', { name: /switch to light mode/i });
+  await page.keyboard.press('Tab');
+  await expect(theme).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(enter).toBeFocused();
+  const guide = dialog.getByRole('region', { name: 'Navigation guide' });
+  await page.keyboard.press('Shift+Tab');
+  await expect(guide).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(theme).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.keyboard.press('Tab');
+  await expect(guide).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(enter).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(help).toBeFocused();
+  await page.reload();
+  await expect(dialog).toHaveCount(0);
 });

@@ -71,13 +71,26 @@ describe('view state serialization', () => {
     expect(deserializeHeadwayViewState('still-not-valid')).toBeNull();
   });
 
+  it.each([
+    'true',
+    '[]',
+    '{}',
+    '{"r":[0,0,0]}',
+    '{"r":[0,0,0,0]}',
+    '{"r":[0,0,0,1],"d":1e309}',
+    '{"r":[0,0,0,1],"d":null}',
+    '{"r":[0,0,0,1],"f":"28"}',
+  ])('rejects invalid Geo payload %s before startup restoration', (payload) => {
+    expect(deserializeViewState(btoa(payload))).toBeNull();
+  });
+
   it('normalizes stale local dev Geo paths while preserving params', () => {
     expect(
       normalizeRuntimeUrl(
-        'http://localhost:5173/Geo/?view=abc123&mode=headway#hud',
+        'http://localhost:6000/Geo/?view=abc123&mode=headway#hud',
         'local-dev',
       ),
-    ).toBe('http://localhost:5173/?view=abc123&mode=headway#hud');
+    ).toBe('http://localhost:6000/?view=abc123&mode=headway#hud');
   });
 
   it('normalizes the initial runtime URL in local-dev mode', () => {
@@ -95,9 +108,9 @@ describe('view state serialization', () => {
       buildViewUrlForMode(
         DEFAULT_VIEW,
         'local-dev',
-        'http://localhost:5173/Geo/?view=stale',
+        'http://localhost:6000/Geo/?view=stale',
       ),
-    ).toMatch(/^http:\/\/localhost:5173\/\?view=/);
+    ).toMatch(/^http:\/\/localhost:6000\/\?view=/);
   });
 
   it('builds Headway Pages URLs with mode and map state', () => {

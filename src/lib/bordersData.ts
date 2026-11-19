@@ -1,17 +1,25 @@
-import type { BordersProfileId, BordersSelectedFeature } from '../state/viewerStore';
+import type {
+  BordersProfileId,
+  BordersSelectedFeature,
+} from '../state/viewerStore';
 import { formatBordersMetricValue } from './bordersLegend';
 import { getBordersProfileDefinition } from './bordersProfiles';
+import {
+  parseMetricDataset,
+  type MetricDataset,
+  type MetricRecord,
+} from './observations';
 
 export type BordersMetricRecord = {
   iso3: string;
   name: string;
   value: number | null;
-};
+} & Partial<Pick<MetricRecord, 'year' | 'missingReason'>>;
 
 export type BordersMetricsPayload = {
   indicator: string;
   records: BordersMetricRecord[];
-};
+} & Partial<Omit<MetricDataset, 'indicator' | 'records'>>;
 
 export type BordersPinRecord = {
   id: string;
@@ -118,8 +126,13 @@ export const loadBordersCoverage = () =>
 export const loadBordersAttribution = () =>
   fetchJson<BordersAttributionPayload>('attribution.json');
 
-export const loadBordersMetrics = (profileId: 'gdp' | 'population') =>
-  fetchJson<BordersMetricsPayload>(`profiles/${profileId}.json`);
+export const loadBordersMetrics = async (
+  profileId: 'gdp' | 'population',
+): Promise<BordersMetricsPayload> =>
+  parseMetricDataset(
+    await fetchJson<unknown>(`profiles/${profileId}.json`),
+    profileId,
+  );
 
 export const loadBordersPins = (profileId: 'gdp' | 'population') =>
   fetchJson<BordersPinRecord[]>(`pins/${profileId}.json`);
@@ -127,7 +140,9 @@ export const loadBordersPins = (profileId: 'gdp' | 'population') =>
 const getMetricValues = (payload: BordersMetricsPayload | null) =>
   (payload?.records ?? [])
     .map((record) => record.value)
-    .filter((value): value is number => value != null && Number.isFinite(value));
+    .filter(
+      (value): value is number => value != null && Number.isFinite(value),
+    );
 
 const mixChannel = (from: number, to: number, alpha: number) =>
   Math.round(from + (to - from) * alpha);

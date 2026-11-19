@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
+import { RendererErrorBoundary } from '../components/RendererErrorBoundary';
 import type { WebGLRenderer } from 'three';
 import { Vector3 } from 'three';
 import type { DirectionalLight, Group } from 'three';
@@ -128,6 +129,32 @@ function CanvasFailureSignal({
   return null;
 }
 
+function RendererReadySignal({
+  activeTierRef,
+  attemptedTiersRef,
+  onRendererReady,
+}: {
+  activeTierRef: RefObject<RendererTier | null>;
+  attemptedTiersRef: RefObject<RendererTier[]>;
+  onRendererReady: GlobeCanvasProps['onRendererReady'];
+}) {
+  const hasNotifiedRef = useRef(false);
+  useEffect(() => {
+    if (hasNotifiedRef.current) return;
+    hasNotifiedRef.current = true;
+    // Notify after the scene commits, rather than updating the outer React root
+    // from Fiber's configuration callback while another root is rendering.
+    onRendererReady({
+      tier: activeTierRef.current ?? 'standard',
+      attemptedTiers:
+        attemptedTiersRef.current.length > 0
+          ? [...attemptedTiersRef.current]
+          : ['standard'],
+    });
+  }, [activeTierRef, attemptedTiersRef, onRendererReady]);
+  return null;
+}
+
 function Scene({
   quality,
   showBorders,
@@ -215,8 +242,9 @@ function GlobeAxisMarker() {
     const worldPoint = localPoint
       .clone()
       .applyQuaternion(quaternionFromArray(view.rotation));
-    const cameraToMarkerDistance = new Vector3(...cameraPose.position)
-      .distanceTo(worldPoint);
+    const cameraToMarkerDistance = new Vector3(
+      ...cameraPose.position,
+    ).distanceTo(worldPoint);
     const markerRadiusPx = 5;
     const markerScale =
       viewportHeight <= 0
@@ -255,9 +283,7 @@ function GlobeAxisMarker() {
 
 function GeoOverviewDebugOverlay() {
   const view = useViewerStore((state) => state.view);
-  const geoOverviewAnchor = useViewerStore(
-    (state) => state.geoOverviewAnchor,
-  );
+  const geoOverviewAnchor = useViewerStore((state) => state.geoOverviewAnchor);
   const geoOverviewHeadingDeg = useViewerStore(
     (state) => state.geoOverviewHeadingDeg,
   );
@@ -267,8 +293,7 @@ function GeoOverviewDebugOverlay() {
     }
 
     return (
-      new URLSearchParams(window.location.search).get('geoDebug') ===
-      'overview'
+      new URLSearchParams(window.location.search).get('geoDebug') === 'overview'
     );
   }, []);
 
@@ -349,14 +374,13 @@ function GeoOverviewDebugOverlay() {
         <div>earthTopY: {(actualVisibleEarthTopScreenY * 100).toFixed(1)}%</div>
         <div>axisY: {(actualAxisScreenY * 100).toFixed(1)}%</div>
         <div>anchorNdcY: {pinnedSurfaceDebug.anchorNdcY.toFixed(3)}</div>
-        <div>
-          pinnedNdcY: {pinnedSurfaceDebug.anchorNdcY.toFixed(3)}
-        </div>
+        <div>pinnedNdcY: {pinnedSurfaceDebug.anchorNdcY.toFixed(3)}</div>
         <div>effectiveFov: {effectiveFov.toFixed(2)}</div>
         <div>apparentScale: {apparentScale.toFixed(3)}</div>
         <div>targetApparentScale: {targetApparentScale.toFixed(3)}</div>
         <div>
-          rayFallbackUsed: {pinnedSurfaceDebug.rayFallbackUsed ? 'true' : 'false'}
+          rayFallbackUsed:{' '}
+          {pinnedSurfaceDebug.rayFallbackUsed ? 'true' : 'false'}
         </div>
         <div>
           anchorLat:{' '}
@@ -448,64 +472,66 @@ export function GlobeCanvas({
   const failureRef = useRef<RendererInitFailure | null>(null);
 
   const glFactory = useMemo(
-    () =>
-      (defaultProps: RendererFactoryDefaults) => {
-        attemptedTiersRef.current = [];
-        activeTierRef.current = null;
-        failureRef.current = null;
+    () => (defaultProps: RendererFactoryDefaults) => {
+      attemptedTiersRef.current = [];
+      activeTierRef.current = null;
+      failureRef.current = null;
 
-        try {
-          const result = createRendererWithTiers<WebGLRenderer>(
-            defaultProps,
-            quality,
-          );
-          attemptedTiersRef.current = [...result.attemptedTiers];
-          activeTierRef.current = result.tier;
-          return result.renderer;
-        } catch (error) {
-          failureRef.current = toRendererInitFailure(error);
-          attemptedTiersRef.current = [...failureRef.current.attemptedTiers];
-          activeTierRef.current = failureRef.current.tier;
-          throw error;
-        }
-      },
+      try {
+        const result = createRendererWithTiers<WebGLRenderer>(
+          defaultProps,
+          quality,
+        );
+        attemptedTiersRef.current = [...result.attemptedTiers];
+        activeTierRef.current = result.tier;
+        return result.renderer;
+      } catch (error) {
+        failureRef.current = toRendererInitFailure(error);
+        attemptedTiersRef.current = [...failureRef.current.attemptedTiers];
+        activeTierRef.current = failureRef.current.tier;
+        throw error;
+      }
+    },
     [quality],
   );
 
   return (
     <div className="globe-canvas">
-      <Canvas
+      <RendererErrorBoundary
         key={canvasInstanceKey}
-        camera={{ position: [0, 0, 3.15], fov: 28 }}
-        dpr={dpr}
-        fallback={
-          <CanvasFailureSignal
-            failureRef={failureRef}
-            onRendererFailed={onRendererFailed}
-          />
-        }
-        gl={glFactory}
-        onCreated={() =>
-          onRendererReady({
-            tier: activeTierRef.current ?? 'standard',
-            attemptedTiers:
-              attemptedTiersRef.current.length > 0
-                ? [...attemptedTiersRef.current]
-                : ['standard'],
-          })
+        onError={(error) =>
+          onRendererFailed(failureRef.current ?? toRendererInitFailure(error))
         }
       >
-        <Scene
-          quality={quality}
-          showBorders={showBorders}
-          isFrozen={isFrozen}
-          compareModeState={compareModeState}
-          selectedCountryId={selectedCountryId}
-          onContextLost={onContextLost}
-          onContextRestored={onContextRestored}
-          onCountryPick={onCountryPick}
-        />
-      </Canvas>
+        <Canvas
+          key={canvasInstanceKey}
+          camera={{ position: [0, 0, 3.15], fov: 28 }}
+          dpr={dpr}
+          fallback={
+            <CanvasFailureSignal
+              failureRef={failureRef}
+              onRendererFailed={onRendererFailed}
+            />
+          }
+          gl={glFactory}
+        >
+          <RendererReadySignal
+            activeTierRef={activeTierRef}
+            attemptedTiersRef={attemptedTiersRef}
+            onRendererReady={onRendererReady}
+          />
+          <Scene
+            quality={quality}
+            showBorders={showBorders}
+            isFrozen={isFrozen}
+            compareModeState={compareModeState}
+            selectedCountryId={selectedCountryId}
+            onContextLost={onContextLost}
+            onContextRestored={onContextRestored}
+            onCountryPick={onCountryPick}
+          />
+        </Canvas>
+      </RendererErrorBoundary>
       <GeoOverviewDebugOverlay />
     </div>
   );

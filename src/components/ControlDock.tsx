@@ -1,3 +1,4 @@
+import { ThemeToggle } from './ThemeToggle';
 import { useState, type ReactNode } from 'react';
 import {
   canPlayAnimationTimeline,
@@ -20,6 +21,8 @@ import type {
 import type { ViewportLayoutMode } from '../app/useViewportLayout';
 
 type ControlDockProps = {
+  geographyControls?: ReactNode;
+  onOpenTimeAtlas?: () => void;
   quality: QualityMode;
   headwayLayoutLook: HeadwayLayoutLook;
   headwayLayerVisibility: HeadwayLayerVisibility;
@@ -51,6 +54,7 @@ type ControlDockProps = {
   showBorders: boolean;
   showBordersPinpoints: boolean;
   isSceneAvailable: boolean;
+  isSceneReady: boolean;
   layoutMode: ViewportLayoutMode;
 };
 
@@ -70,17 +74,20 @@ const HEADWAY_LAYOUT_LOOKS: Array<{
   {
     id: 'mission',
     label: 'Mission',
-    description: 'Richer dark globe with realistic water, land, and warm road accents.',
+    description:
+      'Richer dark globe with realistic water, land, and warm road accents.',
   },
   {
     id: 'daylight',
     label: 'Daylight',
-    description: 'Realistic bright map with saturated ocean blues and greener land.',
+    description:
+      'Realistic bright map with saturated ocean blues and greener land.',
   },
   {
     id: 'atlas',
     label: 'Atlas',
-    description: 'Printed-map palette with stronger terrain color and earthier roads.',
+    description:
+      'Printed-map palette with stronger terrain color and earthier roads.',
   },
   {
     id: 'blueprint',
@@ -95,7 +102,8 @@ const HEADWAY_LAYOUT_LOOKS: Array<{
   {
     id: 'transit',
     label: 'Transit',
-    description: 'Vivid transport colors with dense labels and brighter routes.',
+    description:
+      'Vivid transport colors with dense labels and brighter routes.',
   },
 ];
 
@@ -188,6 +196,8 @@ function ControlDockSectionCard({
 }
 
 export function ControlDock({
+  onOpenTimeAtlas,
+  geographyControls,
   quality,
   headwayLayoutLook,
   headwayLayerVisibility,
@@ -219,6 +229,7 @@ export function ControlDock({
   showBorders,
   showBordersPinpoints,
   isSceneAvailable,
+  isSceneReady,
   layoutMode,
 }: ControlDockProps) {
   const [openSections, setOpenSections] = useState<
@@ -269,9 +280,12 @@ export function ControlDock({
       >
         <div className="hud-card__header">
           <span className="panel-kicker">Control deck</span>
-          <button className="text-button" onClick={onHelp} type="button">
-            Help
-          </button>
+          <div className="control-deck__actions">
+            <ThemeToggle />
+            <button className="text-button" onClick={onHelp} type="button">
+              Help
+            </button>
+          </div>
         </div>
 
         <div className="field">
@@ -307,6 +321,15 @@ export function ControlDock({
           </div>
         </div>
 
+        {onOpenTimeAtlas ? (
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={onOpenTimeAtlas}
+          >
+            Open Time atlas →
+          </button>
+        ) : null}
         <label className="field">
           <span>Quality</span>
           <select
@@ -373,8 +396,11 @@ export function ControlDock({
         </div>
       </section>
 
+      {geographyControls}
       <ControlDockSectionCard
-        description={isBordersMode ? 'Freeze and pinpoints' : 'Freeze and borders'}
+        description={
+          isBordersMode ? 'Freeze and pinpoints' : 'Freeze and borders'
+        }
         id="control-dock-motion"
         isOpen={openSections.motion}
         onToggle={() => toggleSection('motion')}
@@ -540,8 +566,13 @@ export function ControlDock({
           <div className="button-row">
             <button
               className="secondary-button"
-              disabled={!isAnimationSupported}
+              disabled={!isAnimationSupported || !isSceneReady}
               onClick={onOpenAnimationWorkspace}
+              title={
+                !isSceneReady
+                  ? 'Wait for the map to finish loading.'
+                  : undefined
+              }
               type="button"
             >
               Open editor

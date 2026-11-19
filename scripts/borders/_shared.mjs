@@ -1,4 +1,4 @@
-import { readFile, rm, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, rm, writeFile, mkdir, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -221,9 +221,7 @@ const simplifyRing = (ring, maxPoints, precision) => {
   const step = Math.max(1, Math.ceil(rounded.length / maxPoints));
   const sampled = rounded.filter(
     (_, index) =>
-      index === 0 ||
-      index === rounded.length - 1 ||
-      index % step === 0,
+      index === 0 || index === rounded.length - 1 || index % step === 0,
   );
   const deduped = dedupeConsecutivePoints(sampled);
   const first = deduped[0];
@@ -242,8 +240,7 @@ export const simplifyGeometry = (geometry, admLevel) => {
   }
 
   const precision = admLevel === 'ADM0' ? 3 : 4;
-  const maxPoints =
-    admLevel === 'ADM0' ? 220 : admLevel === 'ADM1' ? 96 : 64;
+  const maxPoints = admLevel === 'ADM0' ? 220 : admLevel === 'ADM1' ? 96 : 64;
 
   if (geometry.type === 'Polygon') {
     return {
@@ -269,9 +266,7 @@ export const simplifyGeometry = (geometry, admLevel) => {
 export const createAdm0Feature = (feature, metadata, index) => {
   const iso3 = metadata.boundaryISO;
   const sourceId = String(
-    feature?.properties?.shapeID ??
-      feature?.id ??
-      `${iso3}-ADM0-${index + 1}`,
+    feature?.properties?.shapeID ?? feature?.id ?? `${iso3}-ADM0-${index + 1}`,
   );
   const geometry = simplifyGeometry(feature?.geometry ?? null, 'ADM0');
 
@@ -324,7 +319,12 @@ export const createNaturalEarthAdm0Feature = (feature, iso3) => {
   };
 };
 
-export const createSubdivisionFeature = (feature, metadata, admLevel, index) => {
+export const createSubdivisionFeature = (
+  feature,
+  metadata,
+  admLevel,
+  index,
+) => {
   const iso3 = metadata.boundaryISO;
   const sourceId = String(
     feature?.properties?.shapeID ??
@@ -468,7 +468,11 @@ export const writeBordersStyle = async () => {
   await writePublicJson('style.json', BORDERS_STYLE);
 };
 
-export const buildCountryIndex = (adm0Collection, adm1Collection, adm2Collection) => {
+export const buildCountryIndex = (
+  adm0Collection,
+  adm1Collection,
+  adm2Collection,
+) => {
   const adm1Iso = new Set(
     adm1Collection.features.map((feature) => feature.properties.iso3),
   );
@@ -521,6 +525,10 @@ export const readNormalizedCountries = async () => {
 };
 
 export const fetchWorldBankIndicatorSeries = async (indicatorCode) => {
+  return (await fetchWorldBankIndicatorDataset(indicatorCode)).records;
+};
+
+export const fetchWorldBankIndicatorDataset = async (indicatorCode) => {
   const url =
     `https://api.worldbank.org/v2/country/all/indicator/${indicatorCode}` +
     '?format=json&per_page=5000&mrv=8&gapfill=y';
@@ -530,7 +538,20 @@ export const fetchWorldBankIndicatorSeries = async (indicatorCode) => {
     join('world-bank', `${indicatorCode}.json`),
   );
 
-  return Array.isArray(payload?.[1]) ? payload[1] : [];
+  if (!Array.isArray(payload?.[1]) || payload?.[0]?.pages !== 1) {
+    throw new Error(
+      `Invalid or incomplete World Bank response: ${indicatorCode}`,
+    );
+  }
+  const cacheInfo = await stat(
+    resolveRawPath('world-bank', `${indicatorCode}.json`),
+  );
+  return {
+    records: payload[1],
+    sourceUrl: url,
+    retrievedAt: cacheInfo.mtime.toISOString(),
+    timestampBasis: 'cache-file-modification',
+  };
 };
 
 export const buildWorldBankRecordMap = (records, countryIsoSet) => {
@@ -543,7 +564,15 @@ export const buildWorldBankRecordMap = (records, countryIsoSet) => {
     }
 
     const value = record?.value;
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
+    const year = Number(record.date);
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      !Number.isInteger(year) ||
+      year < 1800 ||
+      year > 2200
+    ) {
       continue;
     }
 

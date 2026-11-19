@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -14,6 +16,8 @@ import { AnimationWorkspace } from '../components/AnimationWorkspace';
 import { BrandPanel } from '../components/BrandPanel';
 import { BordersLegend } from '../components/BordersLegend';
 import { ControlDock } from '../components/ControlDock';
+import { CountryExplorer } from '../components/CountryExplorer';
+import { navigateGeography } from '../lib/geographyNavigation';
 import { CountryCompareOverlay } from '../components/CountryCompareOverlay';
 import { HudPanel } from '../components/HudPanel';
 import { LoadingOverlay } from '../components/LoadingOverlay';
@@ -76,6 +80,10 @@ import type {
 } from '../state/viewerStore';
 import { readStoredAnimationDraft, useViewerStore } from '../state/viewerStore';
 import type { ShellMode, ViewportLayoutMode } from './useViewportProfile';
+
+const TimeAtlasWorkspace = lazy(
+  () => import('../components/TimeAtlasWorkspace'),
+);
 
 type RailState = {
   leftOpen: boolean;
@@ -441,6 +449,7 @@ function App() {
   );
 
   const [shareLabel, setShareLabel] = useState('Copy share link');
+  const [timeAtlasOpen, setTimeAtlasOpen] = useState(false);
   const [geoCanvasKey, setGeoCanvasKey] = useState(0);
   const [headwayInstanceKey, setHeadwayInstanceKey] = useState(0);
   const [bordersInstanceKey, setBordersInstanceKey] = useState(0);
@@ -470,8 +479,6 @@ function App() {
     const storedHeadwayLayerVisibility = window.localStorage.getItem(
       STORAGE_KEYS.headwayLayerVisibility,
     );
-    const onboardingDismissed =
-      window.localStorage.getItem(STORAGE_KEYS.onboarding) === 'true';
 
     if (
       storedQuality === 'performance' ||
@@ -512,16 +519,11 @@ function App() {
         // Ignore invalid persisted Headway layer visibility.
       }
     }
-
-    if (onboardingDismissed) {
-      setShowOnboarding(false);
-    }
   }, [
     setAxisLockMode,
     setHeadwayLayerVisibility,
     setHeadwayLayoutLook,
     setQuality,
-    setShowOnboarding,
   ]);
 
   useEffect(() => {
@@ -551,7 +553,10 @@ function App() {
   }, [axisLockMode]);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEYS.headwayLayoutLook, headwayLayoutLook);
+    window.localStorage.setItem(
+      STORAGE_KEYS.headwayLayoutLook,
+      headwayLayoutLook,
+    );
   }, [headwayLayoutLook]);
 
   useEffect(() => {
@@ -646,8 +651,7 @@ function App() {
         viewerMode: nextMode,
         headwayView: nextMode === 'headway' ? nextHeadwayView : null,
         bordersView: nextMode === 'borders' ? nextBordersView : null,
-        bordersProfileId:
-          nextMode === 'borders' ? nextBordersProfileId : null,
+        bordersProfileId: nextMode === 'borders' ? nextBordersProfileId : null,
         bordersFocusedCountryIso:
           nextMode === 'borders' ? nextBordersFocusedCountryIso : null,
       });
@@ -844,7 +848,10 @@ function App() {
   ) => {
     if (nextMode === viewerMode) {
       if (options?.animationDraft && nextMode !== 'borders') {
-        loadDraftForMode(resolveAnimationMode(nextMode), options.animationDraft);
+        loadDraftForMode(
+          resolveAnimationMode(nextMode),
+          options.animationDraft,
+        );
       }
       return;
     }
@@ -876,13 +883,18 @@ function App() {
       setHeadwayView(nextHeadwayView);
       setHeadwayRenderState('loading');
       setViewerMode('headway');
-      loadDraftForMode(resolveAnimationMode('headway'), options?.animationDraft);
+      loadDraftForMode(
+        resolveAnimationMode('headway'),
+        options?.animationDraft,
+      );
       syncCurrentUrl('headway', view, nextHeadwayView);
       return;
     }
 
     const nextGeoView =
-      viewerMode === 'borders' ? geoFromBorders(bordersView) : geoFromHeadway(headwayView);
+      viewerMode === 'borders'
+        ? geoFromBorders(bordersView)
+        : geoFromHeadway(headwayView);
 
     clearGeoOverviewState();
     applyImmediateView(nextGeoView);
@@ -1337,7 +1349,13 @@ function App() {
     }
 
     return '';
-  }, [bordersRenderState, headwayRenderState, loadState, renderState, viewerMode]);
+  }, [
+    bordersRenderState,
+    headwayRenderState,
+    loadState,
+    renderState,
+    viewerMode,
+  ]);
 
   const isSceneAvailable =
     viewerMode === 'geo'
@@ -1359,13 +1377,19 @@ function App() {
     }
 
     const animationMode = resolveAnimationMode(viewerMode);
-    loadDraftForMode(animationMode, createDefaultAnimationTimeline(animationMode));
+    loadDraftForMode(
+      animationMode,
+      createDefaultAnimationTimeline(animationMode),
+    );
     setAnimationImportError(null);
     setAnimationPlayhead(0);
   };
 
   const handleOpenAnimationWorkspace = () => {
-    if (viewerMode === 'borders') {
+    if (
+      viewerMode === 'borders' ||
+      (viewerMode === 'geo' ? renderState : headwayRenderState) !== 'ready'
+    ) {
       return;
     }
 
@@ -1526,6 +1550,12 @@ function App() {
     </section>
   );
 
+  const activeRenderState =
+    viewerMode === 'geo'
+      ? renderState
+      : viewerMode === 'headway'
+        ? headwayRenderState
+        : bordersRenderState;
   const activeRenderer =
     viewerMode === 'geo' ? (
       <GlobeCanvas
@@ -1587,16 +1617,16 @@ function App() {
           ? 'Borders paused'
           : 'Borders atlas'
       : viewerMode === 'headway'
-      ? headwayRenderState === 'error'
-        ? 'Headway offline'
-        : 'Headway live'
-      : renderState === 'failed'
-        ? 'Renderer offline'
-        : isFrozen
-          ? 'Geo paused'
-          : telemetry.sunlit
-            ? 'Geo sunlit'
-            : 'Geo night';
+        ? headwayRenderState === 'error'
+          ? 'Headway offline'
+          : 'Headway live'
+        : renderState === 'failed'
+          ? 'Renderer offline'
+          : isFrozen
+            ? 'Geo paused'
+            : telemetry.sunlit
+              ? 'Geo sunlit'
+              : 'Geo night';
   const handleOpenLeftRail = () => {
     dispatchRailState({ type: 'open-left', shellMode, layoutMode });
   };
@@ -1660,6 +1690,17 @@ function App() {
 
   const rightRailContent = (
     <ControlDock
+      onOpenTimeAtlas={() => {
+        if (isAnimationPlaying) stopPlaybackAtPreview();
+        setTimeAtlasOpen(true);
+      }}
+      geographyControls={
+        <CountryExplorer
+          countryIndex={bordersCountryIndex}
+          onNavigate={navigateGeography}
+          disabled={isFrozen || isAnimationPlaying}
+        />
+      }
       animationDraft={animationDraft}
       axisLockMode={axisLockMode}
       bordersProfileId={bordersProfileId}
@@ -1668,6 +1709,7 @@ function App() {
       headwayLayoutLook={headwayLayoutLook}
       isFrozen={isFrozen}
       isSceneAvailable={isSceneAvailable}
+      isSceneReady={activeRenderState === 'ready'}
       onBordersProfileChange={(profileId) => {
         setBordersProfileId(profileId);
         syncCurrentUrl(
@@ -1711,6 +1753,15 @@ function App() {
 
   const appShellClassName = `app-shell app-shell--${layoutMode} app-shell--${shellMode} app-shell--${orientation}`;
 
+  if (timeAtlasOpen)
+    return (
+      <Suspense
+        fallback={<p className="telemetry-note">Loading Time atlas…</p>}
+      >
+        <TimeAtlasWorkspace onClose={() => setTimeAtlasOpen(false)} />
+      </Suspense>
+    );
+
   return (
     <main className={appShellClassName}>
       {isAnimationWorkspaceOpen ? (
@@ -1718,6 +1769,8 @@ function App() {
           <div className="space-backdrop" aria-hidden="true" />
           <div
             className={`scene-host scene-host--workspace scene-host--${layoutMode} scene-host--${shellMode}`}
+            data-renderer-state={activeRenderState}
+            data-viewer-mode={viewerMode}
           >
             {activeRenderer}
           </div>
@@ -1753,6 +1806,8 @@ function App() {
           <div className="space-backdrop" aria-hidden="true" />
           <div
             className={`scene-host scene-host--viewer scene-host--${layoutMode} scene-host--${shellMode}`}
+            data-renderer-state={activeRenderState}
+            data-viewer-mode={viewerMode}
           >
             {activeRenderer}
           </div>

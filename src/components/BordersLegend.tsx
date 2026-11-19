@@ -3,6 +3,11 @@ import { BORDERS_COLORS, loadBordersMetrics } from '../lib/bordersData';
 import { getBordersLegendStops } from '../lib/bordersLegend';
 import { getBordersProfileDefinition } from '../lib/bordersProfiles';
 import type { BordersProfileId } from '../state/viewerStore';
+import {
+  parseMetricDataset,
+  comparisonPolicy,
+  type MetricDataset,
+} from '../lib/observations';
 
 type BordersLegendProps = {
   profileId: BordersProfileId;
@@ -18,31 +23,24 @@ const HIERARCHY_STOPS = [
   { color: BORDERS_COLORS.hierarchyStops[3], label: 'Smallest districts' },
 ];
 
-export function BordersLegend({
+function BordersLegendContent({
   profileId,
   focusedCountryIso,
   focusedCountryName,
   noticeMessage,
 }: BordersLegendProps) {
   const [metricValues, setMetricValues] = useState<number[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(profileId !== 'hierarchy');
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [dataset, setDataset] = useState<MetricDataset | null>(null);
   const profile = getBordersProfileDefinition(profileId);
 
   useEffect(() => {
     let cancelled = false;
 
     if (profileId === 'hierarchy') {
-      setMetricValues([]);
-      setLoadError(null);
-      setIsLoading(false);
-      return () => {
-        cancelled = true;
-      };
+      return;
     }
-
-    setIsLoading(true);
-    setLoadError(null);
 
     loadBordersMetrics(profileId)
       .then((payload) => {
@@ -50,10 +48,15 @@ export function BordersLegend({
           return;
         }
 
+        const observations = parseMetricDataset(payload, profileId);
+        setDataset(observations);
         setMetricValues(
-          payload.records
+          observations.records
             .map((record) => record.value)
-            .filter((value): value is number => value != null && Number.isFinite(value)),
+            .filter(
+              (value): value is number =>
+                value != null && Number.isFinite(value),
+            ),
         );
         setIsLoading(false);
       })
@@ -62,7 +65,9 @@ export function BordersLegend({
           return;
         }
 
-        setLoadError(error instanceof Error ? error.message : 'Legend unavailable.');
+        setLoadError(
+          error instanceof Error ? error.message : 'Legend unavailable.',
+        );
         setMetricValues([]);
         setIsLoading(false);
       });
@@ -86,10 +91,41 @@ export function BordersLegend({
       {focusedCountryIso ? (
         <p className="telemetry-note">
           Focused country:{' '}
-          {focusedCountryName ? `${focusedCountryName} (${focusedCountryIso})` : focusedCountryIso}
+          {focusedCountryName
+            ? `${focusedCountryName} (${focusedCountryIso})`
+            : focusedCountryIso}
         </p>
       ) : null}
       {noticeMessage ? <p className="telemetry-note">{noticeMessage}</p> : null}
+      {dataset ? (
+        <div className="telemetry-note" aria-label="Observation provenance">
+          <p>{comparisonPolicy(dataset.records).label}</p>
+          <p>
+            Source:{' '}
+            <a href={dataset.source.url} target="_blank" rel="noreferrer">
+              {dataset.source.name}
+            </a>
+            . Units: {dataset.unit}.
+          </p>
+          <p>
+            {dataset.source.retrievedAt
+              ? `Source snapshot: ${dataset.source.retrievedAt.slice(0, 10)} (${dataset.source.timestampBasis === 'cache-file-modification' ? 'cache timestamp' : 'download'}).`
+              : 'Source retrieval date unknown.'}
+          </p>
+          {focusedCountryIso ? (
+            <p>
+              {(() => {
+                const record = dataset.records.find(
+                  (entry) => entry.iso3 === focusedCountryIso,
+                );
+                return !record || record.value === null
+                  ? 'Focused country: no observation available.'
+                  : `Focused observation: ${record.value.toLocaleString('en')} ${dataset.unit}; year: ${record.year ?? 'unknown'}.`;
+              })()}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {isLoading ? (
         <p className="telemetry-note">Loading legend data.</p>
       ) : loadError ? (
@@ -131,4 +167,9 @@ export function BordersLegend({
       )}
     </section>
   );
+}
+
+export function BordersLegend(props: BordersLegendProps) {
+  // Each profile owns its loading state; switching profiles cannot show old data.
+  return <BordersLegendContent key={props.profileId} {...props} />;
 }

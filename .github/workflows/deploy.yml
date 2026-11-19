@@ -1,9 +1,13 @@
 name: Deploy Geo
 
 on:
-  push:
-    branches: ['main']
   workflow_dispatch:
+    inputs:
+      release_reviewed:
+        description: 'Confirm source rights, dependency security and release review are complete'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -16,7 +20,8 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && inputs.release_reviewed
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,7 +29,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24.22.3
           cache: npm
 
       - name: Install
@@ -35,6 +40,9 @@ jobs:
 
       - name: Unit tests
         run: npm run test
+
+      - name: Data contract and publication tests
+        run: npm run test:data
 
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
@@ -60,7 +68,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Deploy
         id: deployment

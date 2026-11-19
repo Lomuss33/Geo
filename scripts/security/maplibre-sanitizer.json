@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "package": "maplibre-gl",
+  "version": "5.21.0",
+  "advisory": "GHSA-jrc7-96c5-q579",
+  "upstreamFix": "https://github.com/maplibre/maplibre-gl-js/commit/1da69f3cd913a39fa948708e01478663bf48bc27",
+  "files": [
+    {
+      "path": "src/util/dom.ts",
+      "originalSha256": "c9c161f34a86c4561535d2b6538627825a8da58131a198310c16e4537a3be063",
+      "patchedSha256": "06acfc1667646b9b3c5adbc32b74bf2091d21af5a98e4ac3efc93b0770cef696",
+      "before": "for (const {name, value} of elem.attributes)",
+      "after": "for (const {name, value} of Array.from(elem.attributes))",
+      "sourceMapComment": ""
+    },
+    {
+      "path": "dist/maplibre-gl.js",
+      "originalSha256": "a9b9007ae3d5df59bbf2f83ad91ee2c86582ea152c09900cd4c84f6307afbc9b",
+      "patchedSha256": "6ec23d850576139af2e13d932c56e078819a766828cc2ecae0b0ba82ba0115e2",
+      "before": "for(const{name:t,value:i}of e.attributes)",
+      "after": "for(const{name:t,value:i}of Array.from(e.attributes))",
+      "sourceMapComment": "//# sourceMappingURL=maplibre-gl.js.map"
+    },
+    {
+      "path": "dist/maplibre-gl-dev.js",
+      "originalSha256": "1722da6328acc8fff1f978c8efbbe558bec9a6e738faa83a273623d8d3e6cbc1",
+      "patchedSha256": "3fa4930fc821db51474d39e38eb5aa44b5cf1f00c30e1a5b1433751a9a79a07c",
+      "before": "for (const { name, value } of elem.attributes)",
+      "after": "for (const { name, value } of Array.from(elem.attributes))",
+      "sourceMapComment": "//# sourceMappingURL=maplibre-gl-dev.js.map"
+    },
+    {
+      "path": "dist/maplibre-gl-csp.js",
+      "originalSha256": "8fc948eeeb28f650467b00d724080af82855706a0a148742bca1dca84ed730a6",
+      "patchedSha256": "75c1599ed6564d71e098d6cd8acbebe8f8b924687a42051767710ad1a747906d",
+      "before": "for(const{name:t,value:i}of e.attributes)",
+      "after": "for(const{name:t,value:i}of Array.from(e.attributes))",
+      "sourceMapComment": "//# sourceMappingURL=maplibre-gl-csp.js.map"
+    },
+    {
+      "path": "dist/maplibre-gl-csp-dev.js",
+      "originalSha256": "40f75861286cec52c34d21bb27208743c61dbed9778cb3d796c18331df425f31",
+      "patchedSha256": "569f50c7a2908cf6819c373752a5436b4744d44da04ac991c635428fba9bb9a2",
+      "before": "for (const { name, value } of elem.attributes)",
+      "after": "for (const { name, value } of Array.from(elem.attributes))",
+      "sourceMapComment": "//# sourceMappingURL=maplibre-gl-csp-dev.js.map"
+    }
+  ]
+}

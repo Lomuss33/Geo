@@ -290,7 +290,9 @@ type ViewerStore = {
   toggleShowBordersPinpoints: () => void;
   setQuality: (quality: QualityMode) => void;
   setHeadwayLayoutLook: (look: HeadwayLayoutLook) => void;
-  setHeadwayLayerVisibility: (visibility: Partial<HeadwayLayerVisibility>) => void;
+  setHeadwayLayerVisibility: (
+    visibility: Partial<HeadwayLayerVisibility>,
+  ) => void;
   setAxisLockMode: (mode: AxisLockMode) => void;
   toggleAxisLock: () => void;
   setCompareModeState: (state: CompareModeState) => void;
@@ -335,9 +337,7 @@ type ViewerStore = {
   }) => void;
   closeAnimationWorkspace: () => void;
   setAnimationDraft: (
-    next:
-      | AnimationTimeline
-      | ((draft: AnimationTimeline) => AnimationTimeline),
+    next: AnimationTimeline | ((draft: AnimationTimeline) => AnimationTimeline),
   ) => void;
   loadAnimationDraft: (timeline: AnimationTimeline) => void;
   setAnimationImportHex: (hex: string) => void;
@@ -385,7 +385,7 @@ export const useViewerStore = create<ViewerStore>((set) => ({
   rendererAttempts: [],
   rendererFailureReason: null,
   rendererFailureMessage: null,
-  showOnboarding: true,
+  showOnboarding: false,
   isFullscreen: false,
   isFrozen: false,
   showBorders: false,
@@ -425,7 +425,8 @@ export const useViewerStore = create<ViewerStore>((set) => ({
               ...bordersSelectedFeature,
             },
     }),
-  setShowBordersPinpoints: (showBordersPinpoints) => set({ showBordersPinpoints }),
+  setShowBordersPinpoints: (showBordersPinpoints) =>
+    set({ showBordersPinpoints }),
   toggleShowBordersPinpoints: () =>
     set((state) => ({ showBordersPinpoints: !state.showBordersPinpoints })),
   setQuality: (quality) => set({ quality }),
@@ -451,7 +452,9 @@ export const useViewerStore = create<ViewerStore>((set) => ({
           ? null
           : {
               ...selectedCountry,
-              centroid: [...selectedCountry.centroid] as SelectedCountry['centroid'],
+              centroid: [
+                ...selectedCountry.centroid,
+              ] as SelectedCountry['centroid'],
             },
     }),
   setGeoOverviewAnchor: (geoOverviewAnchor) =>
@@ -531,9 +534,7 @@ export const useViewerStore = create<ViewerStore>((set) => ({
   markInteracted: () => set({ hasInteracted: true, showOnboarding: false }),
   animateToView: (view) =>
     set((state) =>
-      state.isFrozen
-        ? {}
-        : { targetView: cloneView(view), isAnimating: true },
+      state.isFrozen ? {} : { targetView: cloneView(view), isAnimating: true },
     ),
   applyImmediateView: (view) =>
     set({
@@ -597,8 +598,7 @@ export const useViewerStore = create<ViewerStore>((set) => ({
         animationDraft: cloneAnimationTimeline(normalized),
       };
     }),
-  setAnimationImportHex: (animationImportHex) =>
-    set({ animationImportHex }),
+  setAnimationImportHex: (animationImportHex) => set({ animationImportHex }),
   setAnimationImportError: (animationImportError) =>
     set({ animationImportError }),
   setAnimationPlayhead: (playheadMs) =>

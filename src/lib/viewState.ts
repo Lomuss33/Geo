@@ -5,10 +5,7 @@ import type {
   HeadwayViewState,
   ViewerMode,
 } from '../state/viewerStore';
-import {
-  bordersFromGeo,
-  normalizeBordersView,
-} from './bordersBridge';
+import { bordersFromGeo, normalizeBordersView } from './bordersBridge';
 import {
   DEFAULT_DISTANCE,
   DEFAULT_FOV,
@@ -127,7 +124,16 @@ export const deserializeViewState = (
     r?: [number, number, number, number];
   }>(encoded);
 
-  if (!parsed) {
+  if (
+    !parsed ||
+    typeof parsed !== 'object' ||
+    !isFiniteTuple(parsed.r) ||
+    Math.hypot(...parsed.r) < 1e-8 ||
+    (parsed.d !== undefined &&
+      (typeof parsed.d !== 'number' || !Number.isFinite(parsed.d))) ||
+    (parsed.f !== undefined &&
+      (typeof parsed.f !== 'number' || !Number.isFinite(parsed.f)))
+  ) {
     return null;
   }
 
@@ -305,5 +311,9 @@ export const updateUrlWithView = (
   view: GlobeViewState,
   options: ViewerUrlOptions = {},
 ) => {
-  window.history.replaceState({}, '', buildViewUrl(view, window.location.href, options));
+  window.history.replaceState(
+    {},
+    '',
+    buildViewUrl(view, window.location.href, options),
+  );
 };

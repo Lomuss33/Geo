@@ -9,6 +9,9 @@ test-results/
 *.tsbuildinfo
 .cache/
 
+# Suspended Historical Basemaps output: local research only until rights review.
+public/assets/time-atlas/
+
 # Environment and local overrides
 .env
 .env.*

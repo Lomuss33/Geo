@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react';
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
+import { surfaceAnchoredGeoView } from '../lib/camera';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Group, PerspectiveCamera, Ray, Vector3 } from 'three';
 import { findCountryByLatLon } from '../lib/countryGeometry';
@@ -22,10 +23,9 @@ vi.mock('@react-three/fiber', () => ({
 }));
 
 vi.mock('../lib/countryGeometry', async () => {
-  const actual =
-    await vi.importActual<typeof import('../lib/countryGeometry')>(
-      '../lib/countryGeometry'
-    );
+  const actual = await vi.importActual<typeof import('../lib/countryGeometry')>(
+    '../lib/countryGeometry',
+  );
 
   return {
     ...actual,
@@ -119,6 +119,31 @@ describe('GlobeController', () => {
     );
 
     expect(canvasElement.style.cursor).toBe('');
+  });
+
+  it('preserves a requested country anchor while approaching from a distant view', () => {
+    useViewerStore.setState({ hasInteracted: true });
+    renderController({ compareModeState: 'off' });
+    const anchor = { lat: 45, lon: 16 };
+    act(() => {
+      useViewerStore.getState().setGeoOverviewAnchor(anchor);
+      useViewerStore.getState().setGeoOverviewHeading(0);
+      useViewerStore
+        .getState()
+        .animateToView(surfaceAnchoredGeoView(45, 16, 1.75, 28));
+    });
+    for (let tick = 0; tick < 240; tick += 1) {
+      act(() => {
+        const frame = useFrameMock.mock.lastCall![0] as (
+          state: unknown,
+          delta: number,
+        ) => void;
+        frame({}, 1 / 60);
+      });
+    }
+    expect(useViewerStore.getState().geoOverviewAnchor).toEqual(anchor);
+    expect(useViewerStore.getState().telemetry.lat).toBeCloseTo(45, 1);
+    expect(useViewerStore.getState().telemetry.lon).toBeCloseTo(16, 1);
   });
 
   it('limits compare zoom-out to the compare-specific maximum distance', () => {
