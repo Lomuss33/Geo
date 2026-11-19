@@ -692,17 +692,27 @@ export function BordersMap({
     didReportErrorRef.current = false;
     setDebugState('loading');
 
-    const map = new maplibregl.Map({
-      attributionControl: false,
-      bearing: initialViewRef.current.bearing,
-      center: initialViewRef.current.center,
-      container: containerRef.current,
-      keyboard: false,
-      pitch: initialViewRef.current.pitch,
-      renderWorldCopies: false,
-      style: BORDERS_STYLE_URL,
-      zoom: initialViewRef.current.zoom,
-    });
+    let map: MapLibreMap;
+    try {
+      map = new maplibregl.Map({
+        attributionControl: false,
+        bearing: initialViewRef.current.bearing,
+        center: initialViewRef.current.center,
+        container: containerRef.current,
+        keyboard: false,
+        pitch: initialViewRef.current.pitch,
+        renderWorldCopies: false,
+        style: BORDERS_STYLE_URL,
+        zoom: initialViewRef.current.zoom,
+      });
+    } catch (error) {
+      failBoundaryBoot(
+        error instanceof Error
+          ? error.message
+          : 'Borders could not initialize WebGL.',
+      );
+      return;
+    }
     mapRef.current = map;
 
     const bootTimeout = window.setTimeout(() => {

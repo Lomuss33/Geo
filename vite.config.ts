@@ -22,7 +22,15 @@ function getPagesBase() {
 
 export default defineConfig(({ mode }) => ({
   base: mode === 'pages' ? getPagesBase() : '/',
-  server: { port: 6000, strictPort: true },
+  server: {
+    port: 6003,
+    strictPort: true,
+    fs: {
+      // Preserve Vite's default sensitive-file rules and keep local research,
+      // backups and audit logs out of a network-exposed development server.
+      deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/.cache/**'],
+    },
+  },
   preview: { port: 6001, strictPort: true },
   plugins: [react()],
   test: {

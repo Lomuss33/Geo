@@ -192,38 +192,35 @@ test('loads the viewer shell', async ({ page }) => {
   await expect(page.locator('.top-bar')).toHaveCount(0);
   await expect(page.locator('.overlay-rail--right')).toBeVisible();
 
-  const onboardingButton = page.getByRole('button', {
-    name: /enter viewport/i,
-  });
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const canvas = page.locator('.scene-host canvas').first();
   const failedRendererHeading = page.getByRole('heading', {
     name: /3d renderer unavailable right now/i,
   });
-
   await expect
     .poll(
       async () => {
-        if (await onboardingButton.isVisible().catch(() => false)) {
-          return 'scene';
-        }
-
-        if (await failedRendererHeading.isVisible().catch(() => false)) {
-          return 'failed';
-        }
-
+        if (await canvas.isVisible()) return 'scene';
+        if (await failedRendererHeading.isVisible()) return 'failed';
         return 'pending';
       },
-      { timeout: 5_000 },
+      { timeout: 5000 },
     )
     .not.toBe('pending');
-
-  if ((await onboardingButton.isVisible().catch(() => false)) === true) {
-    await expect(onboardingButton).toBeVisible();
+  if (await canvas.isVisible()) {
+    await page
+      .getByRole('button', { name: /toggle motion section/i })
+      .scrollIntoViewIfNeeded();
     await expect(
       page.getByRole('button', { name: /toggle motion section/i }),
     ).toBeVisible();
+    await page
+      .getByRole('button', { name: /toggle animation section/i })
+      .scrollIntoViewIfNeeded();
     await expect(
       page.getByRole('button', { name: /toggle animation section/i }),
     ).toBeVisible();
+    await page.screenshot({ path: 'test-results/earth-opt-in-help.png' });
     return;
   }
 
@@ -627,4 +624,48 @@ test('tablet drawer viewport opens the control rail by default', async ({
   await expect(page.locator('.overlay-rail--left')).toHaveClass(
     /overlay-rail--open/,
   );
+});
+
+test('help is opt-in and its brief stays usable on short screens', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 500 });
+  await page.goto('/');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const rail = page.getByRole('button', {
+    name: 'Open control rail',
+    exact: true,
+  });
+  if (await rail.isVisible()) await rail.click();
+  const help = page.getByRole('button', { name: 'Help', exact: true });
+  await help.click();
+  const dialog = page.getByRole('dialog', { name: /3d earth navigation/i });
+  const enter = dialog.getByRole('button', { name: /enter viewport/i });
+  await expect(dialog).toBeVisible();
+  await expect(enter).toBeFocused();
+  const bounds = await enter.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(500);
+  const theme = dialog.getByRole('button', { name: /switch to light mode/i });
+  await page.keyboard.press('Tab');
+  await expect(theme).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(enter).toBeFocused();
+  const guide = dialog.getByRole('region', { name: 'Navigation guide' });
+  await page.keyboard.press('Shift+Tab');
+  await expect(guide).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(theme).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.keyboard.press('Tab');
+  await expect(guide).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(enter).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(help).toBeFocused();
+  await page.reload();
+  await expect(dialog).toHaveCount(0);
 });

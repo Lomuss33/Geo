@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -78,6 +80,10 @@ import type {
 } from '../state/viewerStore';
 import { readStoredAnimationDraft, useViewerStore } from '../state/viewerStore';
 import type { ShellMode, ViewportLayoutMode } from './useViewportProfile';
+
+const TimeAtlasWorkspace = lazy(
+  () => import('../components/TimeAtlasWorkspace'),
+);
 
 type RailState = {
   leftOpen: boolean;
@@ -443,6 +449,7 @@ function App() {
   );
 
   const [shareLabel, setShareLabel] = useState('Copy share link');
+  const [timeAtlasOpen, setTimeAtlasOpen] = useState(false);
   const [geoCanvasKey, setGeoCanvasKey] = useState(0);
   const [headwayInstanceKey, setHeadwayInstanceKey] = useState(0);
   const [bordersInstanceKey, setBordersInstanceKey] = useState(0);
@@ -472,8 +479,6 @@ function App() {
     const storedHeadwayLayerVisibility = window.localStorage.getItem(
       STORAGE_KEYS.headwayLayerVisibility,
     );
-    const onboardingDismissed =
-      window.localStorage.getItem(STORAGE_KEYS.onboarding) === 'true';
 
     if (
       storedQuality === 'performance' ||
@@ -514,16 +519,11 @@ function App() {
         // Ignore invalid persisted Headway layer visibility.
       }
     }
-
-    if (onboardingDismissed) {
-      setShowOnboarding(false);
-    }
   }, [
     setAxisLockMode,
     setHeadwayLayerVisibility,
     setHeadwayLayoutLook,
     setQuality,
-    setShowOnboarding,
   ]);
 
   useEffect(() => {
@@ -1386,7 +1386,10 @@ function App() {
   };
 
   const handleOpenAnimationWorkspace = () => {
-    if (viewerMode === 'borders') {
+    if (
+      viewerMode === 'borders' ||
+      (viewerMode === 'geo' ? renderState : headwayRenderState) !== 'ready'
+    ) {
       return;
     }
 
@@ -1547,6 +1550,12 @@ function App() {
     </section>
   );
 
+  const activeRenderState =
+    viewerMode === 'geo'
+      ? renderState
+      : viewerMode === 'headway'
+        ? headwayRenderState
+        : bordersRenderState;
   const activeRenderer =
     viewerMode === 'geo' ? (
       <GlobeCanvas
@@ -1681,6 +1690,10 @@ function App() {
 
   const rightRailContent = (
     <ControlDock
+      onOpenTimeAtlas={() => {
+        if (isAnimationPlaying) stopPlaybackAtPreview();
+        setTimeAtlasOpen(true);
+      }}
       geographyControls={
         <CountryExplorer
           countryIndex={bordersCountryIndex}
@@ -1696,6 +1709,7 @@ function App() {
       headwayLayoutLook={headwayLayoutLook}
       isFrozen={isFrozen}
       isSceneAvailable={isSceneAvailable}
+      isSceneReady={activeRenderState === 'ready'}
       onBordersProfileChange={(profileId) => {
         setBordersProfileId(profileId);
         syncCurrentUrl(
@@ -1739,6 +1753,15 @@ function App() {
 
   const appShellClassName = `app-shell app-shell--${layoutMode} app-shell--${shellMode} app-shell--${orientation}`;
 
+  if (timeAtlasOpen)
+    return (
+      <Suspense
+        fallback={<p className="telemetry-note">Loading Time atlas…</p>}
+      >
+        <TimeAtlasWorkspace onClose={() => setTimeAtlasOpen(false)} />
+      </Suspense>
+    );
+
   return (
     <main className={appShellClassName}>
       {isAnimationWorkspaceOpen ? (
@@ -1746,6 +1769,8 @@ function App() {
           <div className="space-backdrop" aria-hidden="true" />
           <div
             className={`scene-host scene-host--workspace scene-host--${layoutMode} scene-host--${shellMode}`}
+            data-renderer-state={activeRenderState}
+            data-viewer-mode={viewerMode}
           >
             {activeRenderer}
           </div>
@@ -1781,6 +1806,8 @@ function App() {
           <div className="space-backdrop" aria-hidden="true" />
           <div
             className={`scene-host scene-host--viewer scene-host--${layoutMode} scene-host--${shellMode}`}
+            data-renderer-state={activeRenderState}
+            data-viewer-mode={viewerMode}
           >
             {activeRenderer}
           </div>

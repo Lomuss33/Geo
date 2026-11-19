@@ -213,19 +213,33 @@ export function GlobeController({
   );
 
   useEffect(() => {
-    const hydrated = constrainGeoView(
-      cloneView(useViewerStore.getState().view),
-    );
+    // Hydration restores a complete frame, rather than a new navigation target.
+    // Re-solving it from the globe's centered anchor moves the pose on every
+    // reload. Seed subsequent controls from the actual saved surface instead.
+    const hydrated = cloneView(useViewerStore.getState().view);
+    if (getGeoLinearZoomT(hydrated.distance) > 1e-4) {
+      const surface = deriveSurfaceAnchor(hydrated);
+      const anchor = { lat: surface.anchorLat, lon: surface.anchorLon };
+      setGeoOverviewAnchor(anchor);
+      setGeoOverviewHeading(deriveGeoOverviewHeading(hydrated, anchor));
+    } else {
+      clearGeoOverviewState();
+    }
     currentViewRef.current = cloneView(hydrated);
     targetViewRef.current = cloneView(hydrated);
     lastSerializedRef.current = serializeViewState(hydrated);
     applyImmediateView(hydrated);
-  }, [applyImmediateView, constrainGeoView]);
+  }, [
+    applyImmediateView,
+    clearGeoOverviewState,
+    setGeoOverviewAnchor,
+    setGeoOverviewHeading,
+  ]);
 
   useEffect(() => {
-    targetViewRef.current = applyStoredOverviewConstraint(
-      cloneView(targetView),
-    );
+    targetViewRef.current = viewsEqual(targetView, currentViewRef.current)
+      ? cloneView(targetView)
+      : applyStoredOverviewConstraint(cloneView(targetView));
   }, [targetView]);
 
   useEffect(() => {

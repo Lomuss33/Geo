@@ -1,3 +1,4 @@
+import { ThemeToggle } from './ThemeToggle';
 import { useState, type ReactNode } from 'react';
 import {
   canPlayAnimationTimeline,
@@ -21,6 +22,7 @@ import type { ViewportLayoutMode } from '../app/useViewportLayout';
 
 type ControlDockProps = {
   geographyControls?: ReactNode;
+  onOpenTimeAtlas?: () => void;
   quality: QualityMode;
   headwayLayoutLook: HeadwayLayoutLook;
   headwayLayerVisibility: HeadwayLayerVisibility;
@@ -52,6 +54,7 @@ type ControlDockProps = {
   showBorders: boolean;
   showBordersPinpoints: boolean;
   isSceneAvailable: boolean;
+  isSceneReady: boolean;
   layoutMode: ViewportLayoutMode;
 };
 
@@ -193,6 +196,7 @@ function ControlDockSectionCard({
 }
 
 export function ControlDock({
+  onOpenTimeAtlas,
   geographyControls,
   quality,
   headwayLayoutLook,
@@ -225,6 +229,7 @@ export function ControlDock({
   showBorders,
   showBordersPinpoints,
   isSceneAvailable,
+  isSceneReady,
   layoutMode,
 }: ControlDockProps) {
   const [openSections, setOpenSections] = useState<
@@ -275,9 +280,12 @@ export function ControlDock({
       >
         <div className="hud-card__header">
           <span className="panel-kicker">Control deck</span>
-          <button className="text-button" onClick={onHelp} type="button">
-            Help
-          </button>
+          <div className="control-deck__actions">
+            <ThemeToggle />
+            <button className="text-button" onClick={onHelp} type="button">
+              Help
+            </button>
+          </div>
         </div>
 
         <div className="field">
@@ -313,6 +321,15 @@ export function ControlDock({
           </div>
         </div>
 
+        {onOpenTimeAtlas ? (
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={onOpenTimeAtlas}
+          >
+            Open Time atlas →
+          </button>
+        ) : null}
         <label className="field">
           <span>Quality</span>
           <select
@@ -549,8 +566,13 @@ export function ControlDock({
           <div className="button-row">
             <button
               className="secondary-button"
-              disabled={!isAnimationSupported}
+              disabled={!isAnimationSupported || !isSceneReady}
               onClick={onOpenAnimationWorkspace}
+              title={
+                !isSceneReady
+                  ? 'Wait for the map to finish loading.'
+                  : undefined
+              }
               type="button"
             >
               Open editor

@@ -1,3 +1,4 @@
+import { ThemeToggle } from './ThemeToggle';
 import { useState } from 'react';
 import type { WorkspaceMode } from '../app/useViewportProfile';
 import {
@@ -52,13 +53,11 @@ const formatSeconds = (milliseconds: number) =>
   (milliseconds / 1_000).toFixed(2).replace(/\.?0+$/, '');
 
 const formatPoseInput = (value: number, decimals: number) =>
-  value.toFixed(decimals).replace(/\.?0+$/, (match) =>
-    match.startsWith('.') ? '' : match,
-  );
+  value
+    .toFixed(decimals)
+    .replace(/\.?0+$/, (match) => (match.startsWith('.') ? '' : match));
 
-const getGeoPoseSourceKey = (
-  view: AnimationTimelineState['startGeoView'],
-) =>
+const getGeoPoseSourceKey = (view: AnimationTimelineState['startGeoView']) =>
   view == null
     ? 'geo-start-empty'
     : [
@@ -67,7 +66,9 @@ const getGeoPoseSourceKey = (
         view.fov.toFixed(2),
       ].join(':');
 
-const buildGeoPoseFormState = (view: NonNullable<AnimationTimelineState['startGeoView']>) => {
+const buildGeoPoseFormState = (
+  view: NonNullable<AnimationTimelineState['startGeoView']>,
+) => {
   const pose = deriveGeoPoseFields(view);
 
   return {
@@ -121,7 +122,7 @@ export function AnimationWorkspace({
     (block) => block.id === selectedBlockId,
   )
     ? selectedBlockId
-    : draft.blocks[0]?.id ?? null;
+    : (draft.blocks[0]?.id ?? null);
   const selectedBlock =
     draft.blocks.find((block) => block.id === resolvedSelectedBlockId) ?? null;
   const durationInput =
@@ -130,7 +131,9 @@ export function AnimationWorkspace({
       : (draft.totalDurationMs / 1_000).toFixed(1);
   const currentGeoStartView =
     draft.startGeoView ?? getDefaultAnimationStartGeoView();
-  const enabledBlockCount = draft.blocks.filter((block) => block.enabled).length;
+  const enabledBlockCount = draft.blocks.filter(
+    (block) => block.enabled,
+  ).length;
   const resolvedGeoPoseFormState =
     geoPoseFormState.sourceKey === getGeoPoseSourceKey(currentGeoStartView)
       ? geoPoseFormState
@@ -150,7 +153,10 @@ export function AnimationWorkspace({
     return null;
   }
 
-  const recordCommandAmount = (command: AnimationCommandKey, amount: number) => {
+  const recordCommandAmount = (
+    command: AnimationCommandKey,
+    amount: number,
+  ) => {
     setLastAmountByCommand((current) => ({
       ...current,
       [command]: amount,
@@ -221,7 +227,9 @@ export function AnimationWorkspace({
 
     const nextDurationMs = Math.round(nextDurationSeconds * 1_000);
     if (nextDurationMs < maxEndMs) {
-      setDurationError('Total duration cannot be shorter than the latest clip end.');
+      setDurationError(
+        'Total duration cannot be shorter than the latest clip end.',
+      );
       return;
     }
 
@@ -261,7 +269,9 @@ export function AnimationWorkspace({
     setGeoPoseError(null);
   };
 
-  const applyGeoStartPose = (nextView: AnimationTimelineState['startGeoView']) => {
+  const applyGeoStartPose = (
+    nextView: AnimationTimelineState['startGeoView'],
+  ) => {
     onDraftChange((current) => ({
       ...current,
       startGeoView: nextView,
@@ -364,6 +374,7 @@ export function AnimationWorkspace({
             </div>
 
             <div className="animation-workspace__toolbar-actions">
+              <ThemeToggle />
               <WorkspaceIconButton
                 disabled={!canPlay}
                 icon="play"

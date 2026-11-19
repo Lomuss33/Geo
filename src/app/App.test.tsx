@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -12,7 +13,11 @@ import {
   serializeAnimationTimeline,
 } from '../lib/animation';
 import { getAllCountries } from '../lib/countryGeometry';
-import { COMPARE_MAX_DISTANCE, DEFAULT_VIEW, viewFromLatLon } from '../lib/constants';
+import {
+  COMPARE_MAX_DISTANCE,
+  DEFAULT_VIEW,
+  viewFromLatLon,
+} from '../lib/constants';
 import { cloneView } from '../lib/math';
 import { useViewerStore } from '../state/viewerStore';
 
@@ -41,8 +46,7 @@ vi.mock('../lib/bordersData', () => ({
   getBordersCountryName: (
     countryIndex: Array<{ iso3: string; name: string }> | null,
     iso3: string | null,
-  ) =>
-    countryIndex?.find((record) => record.iso3 === iso3)?.name ?? null,
+  ) => countryIndex?.find((record) => record.iso3 === iso3)?.name ?? null,
   formatBordersSelectionValue: (_profileId: string, value: number | null) =>
     value == null ? 'Unavailable' : value.toString(),
 }));
@@ -267,24 +271,38 @@ vi.mock('../scene/BordersMap', () => ({
       pitch: number;
     }) => void;
     onFocusCountry: (iso3: string | null) => void;
-    onSelectFeature: (feature: {
-      iso3: string;
-      admLevel: 2;
-      featureId: string;
-      name: string;
-      metricValue: number | null;
-    } | null) => void;
+    onSelectFeature: (
+      feature: {
+        iso3: string;
+        admLevel: 2;
+        featureId: string;
+        name: string;
+        metricValue: number | null;
+      } | null,
+    ) => void;
   }) => (
     <div data-testid="borders-map">
       <span>{`Borders ${view.center[1].toFixed(1)},${view.center[0].toFixed(1)} @ ${view.zoom.toFixed(1)}`}</span>
       <span>{`Borders profile ${profileId}`}</span>
       <span>{`Borders quality ${quality}`}</span>
       <span>{`Borders shell ${shellMode}`}</span>
-      <span>{showPinpoints ? 'Borders pinpoints on' : 'Borders pinpoints off'}</span>
-      <span>{focusedCountryIso ? `Borders focus ${focusedCountryIso}` : 'Borders focus none'}</span>
-      <span>{selectedFeature ? `Borders selected ${selectedFeature.name}` : 'Borders selected none'}</span>
+      <span>
+        {showPinpoints ? 'Borders pinpoints on' : 'Borders pinpoints off'}
+      </span>
+      <span>
+        {focusedCountryIso
+          ? `Borders focus ${focusedCountryIso}`
+          : 'Borders focus none'}
+      </span>
+      <span>
+        {selectedFeature
+          ? `Borders selected ${selectedFeature.name}`
+          : 'Borders selected none'}
+      </span>
       <span>{isFrozen ? 'Borders frozen' : 'Borders live'}</span>
-      <span>{axisLockMode === 'axis-lock' ? 'Borders axis lock' : 'Borders free'}</span>
+      <span>
+        {axisLockMode === 'axis-lock' ? 'Borders axis lock' : 'Borders free'}
+      </span>
       <button onClick={onReady} type="button">
         Simulate borders ready
       </button>
@@ -533,7 +551,7 @@ describe('App', () => {
     fireEvent.click(
       document.querySelector('.overlay-tab--left') as HTMLElement,
     );
-    expect(screen.getByText(/3d earth navigation/i)).toBeInTheDocument();
+    expect(screen.getByText(/explore\. learn\. create\./i)).toBeInTheDocument();
     expect(document.querySelector('.overlay-rail--left')).toHaveClass(
       'overlay-rail--open',
     );
@@ -590,7 +608,9 @@ describe('App', () => {
 
     expect(useViewerStore.getState().compareModeState).toBe('off');
     expect(screen.queryByTestId('country-compare-overlay')).toBeNull();
-    expect(screen.getByRole('button', { name: /^compare$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /^compare$/i }),
+    ).toBeInTheDocument();
   });
 
   it('disables compare in Headway and clears any pinned country on mode switch', () => {
@@ -618,10 +638,10 @@ describe('App', () => {
     expect(screen.getByTestId('borders-map')).toBeInTheDocument();
     expect(screen.getByTestId('borders-legend')).toBeInTheDocument();
     expect(screen.getByText(/borders profile gdp/i)).toBeInTheDocument();
-    expect(screen.getByText(/borders animation is not part of v1/i)).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /open editor/i }),
-    ).toBeDisabled();
+      screen.getByText(/borders animation is not part of v1/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open editor/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /^play$/i })).toBeDisabled();
     expect(
       screen.getByRole('button', { name: /compare \(geo only\)/i }),
@@ -648,7 +668,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /focus usa/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/focus: united states \(usa\)/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/focus: united states \(usa\)/i),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(
@@ -672,9 +694,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByTestId('country-compare-overlay')).toBeInTheDocument();
-    expect(
-      screen.queryByText(/centered and pinned/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/centered and pinned/i)).not.toBeInTheDocument();
     expect(
       screen.getByText(/live compare outline\. drag and zoom stay active\./i),
     ).toBeInTheDocument();
@@ -725,7 +745,9 @@ describe('App', () => {
     const targetView = useViewerStore.getState().targetView;
 
     expect(useViewerStore.getState().compareModeState).toBe('pinned');
-    expect(useViewerStore.getState().selectedCountry?.id).toBe(compareCountry.id);
+    expect(useViewerStore.getState().selectedCountry?.id).toBe(
+      compareCountry.id,
+    );
     expect(useViewerStore.getState().geoOverviewAnchor).toBeNull();
     expect(nextView.distance).toBeCloseTo(COMPARE_MAX_DISTANCE, 6);
     expect(targetView).toEqual(nextView);
@@ -820,7 +842,8 @@ describe('App', () => {
       useViewerStore.getState().animationSession.previewGeoView?.fov,
     ).toBeCloseTo(storedStartView.fov, 6);
     expect(
-      useViewerStore.getState().animationSession.previewGeoView?.rotation[0] ?? 0,
+      useViewerStore.getState().animationSession.previewGeoView?.rotation[0] ??
+        0,
     ).toBeCloseTo(storedStartView.rotation[0], 6);
     expect(
       useViewerStore.getState().animationSession.previewGeoView,
@@ -884,7 +907,12 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('tab', { name: /headway/i }));
-    fireEvent.click(screen.getByRole('button', { name: /atlas/i }));
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Layout section' })).getByRole(
+        'button',
+        { name: /atlas/i },
+      ),
+    );
 
     expect(useViewerStore.getState().headwayLayoutLook).toBe('atlas');
     expect(screen.getByText(/headway look atlas/i)).toBeInTheDocument();

@@ -1,0 +1,467 @@
+.time-atlas {
+  height: 100dvh;
+  width: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  background: var(--panel);
+  color: var(--text);
+}
+.time-atlas button,
+.time-atlas input,
+.time-atlas select {
+  min-height: 38px;
+}
+.time-atlas button {
+  cursor: pointer;
+}
+.time-atlas :focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+.time-atlas a {
+  color: var(--text);
+  text-underline-offset: 3px;
+}
+.time-atlas__header {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line-strong);
+}
+.time-atlas__header h1 {
+  margin: 3px 0 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.05em;
+}
+.time-atlas__header-actions {
+  display: flex;
+  gap: 8px;
+}
+.time-atlas__header > .secondary-button,
+.time-atlas__header-actions > .secondary-button,
+.time-atlas__timeline-top > button {
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.time-atlas__header > div:nth-child(2) {
+  margin-right: auto;
+}
+.time-atlas__perspectives {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 20px;
+}
+.time-atlas__perspectives > button {
+  background: var(--panel);
+  color: inherit;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+.time-atlas__perspectives > button[aria-pressed='true'] {
+  border-color: var(--line-strong);
+  background: var(--panel);
+}
+.time-atlas__perspectives small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.time-atlas__color-dot {
+  background: var(--text);
+  width: 9px;
+  height: 9px;
+  border-radius: 0;
+  flex-shrink: 0;
+}
+.time-atlas__count {
+  margin-left: auto;
+  color: var(--text);
+  font-family: 'Chivo Mono', monospace;
+}
+.time-atlas__body {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 330px;
+}
+.time-atlas__stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel);
+}
+.time-atlas__map,
+.time-atlas__map-canvas {
+  position: absolute;
+  inset: 0;
+}
+.time-atlas__date-badge {
+  position: absolute;
+  pointer-events: none;
+  left: 20px;
+  top: 18px;
+  padding: 12px 16px;
+  border-radius: 0;
+  background: var(--panel);
+  box-shadow: none;
+  border: 1px solid var(--line-strong);
+  display: grid;
+  gap: 4px;
+}
+.time-atlas__date-badge > span,
+.time-atlas__date-badge > small {
+  color: var(--text);
+  font-size: 0.75rem;
+}
+.time-atlas__date-badge strong {
+  font-size: 1.6rem;
+  font-family: 'Chivo Mono', monospace;
+}
+.time-atlas__reference {
+  position: absolute;
+  bottom: 40px;
+  left: 12px;
+  max-width: calc(100% - 24px);
+  background: var(--panel);
+  padding: 7px 10px;
+  font-size: 0.7rem;
+  border-radius: 0;
+  pointer-events: none;
+}
+.time-atlas__map-warning {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 72px;
+  font-size: 0.75rem;
+  background: var(--panel);
+  color: var(--text);
+  padding: 10px;
+  border-radius: 0;
+}
+.time-atlas__tiles-loading {
+  display: none;
+  position: absolute;
+  right: 50px;
+  top: 12px;
+  padding: 8px;
+  background: var(--panel);
+  border-radius: 0;
+  font-size: 0.72rem;
+}
+.time-atlas__map-canvas[data-atlas-tiles-ready='false']
+  ~ .time-atlas__tiles-loading {
+  display: block;
+}
+.time-atlas__empty-map {
+  position: absolute;
+  pointer-events: none;
+  left: 20px;
+  bottom: 110px;
+  max-width: min(380px, calc(100% - 40px));
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: var(--panel);
+  line-height: 1.5;
+}
+.time-atlas__empty-map p {
+  font-size: 0.8rem;
+  color: var(--text);
+  margin: 7px 0 0;
+}
+.time-atlas__inspector {
+  overflow-y: auto;
+  padding: 18px;
+  border-left: 1px solid var(--line-strong);
+  background: var(--panel);
+}
+.time-atlas__inspector .field {
+  margin: 0 0 12px;
+}
+.time-atlas__inspector-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.time-atlas h2 {
+  font-size: 1.1rem;
+  margin: 10px 0;
+}
+.time-atlas h3 {
+  font-size: 1rem;
+  margin: 0 0 10px;
+}
+.time-atlas__library-empty,
+.time-atlas__layer,
+.time-atlas__detail,
+.time-atlas__record-form {
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  border-radius: 0;
+  padding: 16px;
+  margin: 10px 0;
+  line-height: 1.55;
+}
+.time-atlas__library-empty p,
+.time-atlas__layer p,
+.time-atlas__detail p,
+.time-atlas__record-form p {
+  font-size: 0.8rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.time-atlas__library-empty small,
+.time-atlas__detail small {
+  display: block;
+  color: var(--text);
+  font-size: 0.72rem;
+  margin-top: 10px;
+}
+.time-atlas__layer > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.time-atlas__layer input[type='checkbox'] {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+  accent-color: var(--text);
+}
+.time-atlas__feature {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  color: inherit;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  padding: 9px;
+  margin-top: 6px;
+  text-align: left;
+  border-radius: 0;
+}
+.time-atlas__feature small {
+  color: var(--text);
+  font-size: 0.72rem;
+}
+.time-atlas__local-note {
+  color: var(--text);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+.time-atlas__error,
+.time-atlas__notice {
+  font-size: 0.8rem;
+  padding: 10px;
+  border-radius: 0;
+  line-height: 1.5;
+}
+.time-atlas__error {
+  background: var(--panel);
+  color: var(--text);
+}
+.time-atlas__notice {
+  background: var(--panel);
+  color: var(--text);
+}
+.time-atlas__record-form label {
+  font-size: 0.78rem;
+}
+.time-atlas__form-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.time-atlas__form-pair input {
+  min-width: 0;
+}
+.time-atlas__timeline {
+  padding: 12px 20px 14px;
+  border-top: 1px solid var(--line-strong);
+  background: var(--panel);
+}
+.time-atlas__timeline-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.time-atlas__timeline-top > div {
+  display: grid;
+  gap: 3px;
+  margin-right: auto;
+}
+.time-atlas__timeline-top strong {
+  font-family: 'Chivo Mono', monospace;
+  font-size: 1.3rem;
+}
+.time-atlas__timeline-top > label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+.time-atlas__timeline-top input {
+  width: 94px;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  padding: 7px;
+}
+.time-atlas__scrubber {
+  width: 100%;
+  display: block;
+  accent-color: var(--text);
+  margin: 10px 0 0;
+}
+.time-atlas__ticks {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.7rem;
+}
+
+@media (max-width: 800px) {
+  .time-atlas__header {
+    gap: 8px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+  }
+  .time-atlas__header h1 {
+    font-size: 1.2rem;
+  }
+  .time-atlas__header-actions {
+    margin-left: auto;
+  }
+  .time-atlas__perspectives {
+    padding: 8px 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .time-atlas__perspectives > button {
+    padding: 9px;
+    min-height: 44px;
+    font-size: 0.8rem;
+  }
+  .time-atlas__perspectives small {
+    display: none;
+  }
+  .time-atlas__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(160px, 1fr) minmax(130px, 0.85fr);
+  }
+  .time-atlas__inspector {
+    border-left: 0;
+    border-top: 1px solid var(--line-strong);
+    padding: 12px;
+  }
+  .time-atlas__date-badge {
+    top: 10px;
+    left: 12px;
+    padding: 8px 12px;
+  }
+  .time-atlas__date-badge strong {
+    font-size: 1.2rem;
+  }
+  .time-atlas__empty-map {
+    display: none;
+  }
+  .time-atlas__reference {
+    bottom: 28px;
+    font-size: 0.6rem;
+    padding: 4px 7px;
+  }
+  .time-atlas__timeline {
+    padding: 8px 12px 12px;
+  }
+  .time-atlas__timeline-top {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .time-atlas__timeline-top > .text-button {
+    display: none;
+  }
+  .time-atlas__ticks > span:nth-child(2) {
+    display: none;
+  }
+}
+@media (max-height: 600px) and (min-width: 801px) {
+  .time-atlas__header {
+    padding: 6px 16px;
+  }
+  .time-atlas__perspectives {
+    padding: 5px 16px;
+  }
+  .time-atlas__perspectives small {
+    display: none;
+  }
+  .time-atlas__timeline {
+    padding: 6px 16px;
+  }
+}
+
+@media (max-height: 650px) and (max-width: 800px) {
+  .time-atlas {
+    overflow-y: auto;
+    grid-template-rows: auto auto minmax(300px, 1fr) auto;
+  }
+}
+
+.time-atlas__perspectives > button[aria-pressed='true'] {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+.time-atlas__perspectives > button[aria-pressed='true'] small,
+.time-atlas__perspectives > button[aria-pressed='true'] .time-atlas__count {
+  color: inherit;
+}
+.time-atlas__perspectives > button[aria-pressed='true'] .time-atlas__color-dot {
+  background: var(--bg);
+}
+.time-atlas__error,
+.time-atlas__notice,
+.time-atlas__map-warning {
+  border: 1px solid var(--text);
+}
+.time-atlas__header-actions {
+  flex-wrap: wrap;
+}
+.time-atlas__snapshot-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.time-atlas__snapshot-buttons button[aria-pressed='true'] {
+  border-color: var(--text);
+  background: var(--panel-strong);
+}
+.time-atlas__license {
+  font-size: 0.75rem;
+  margin: 10px 0;
+}
+.time-atlas__license summary {
+  cursor: pointer;
+  padding: 8px 0;
+  color: var(--muted);
+}
+.time-atlas__license pre {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.68rem;
+}
