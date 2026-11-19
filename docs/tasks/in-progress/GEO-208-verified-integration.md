@@ -108,6 +108,23 @@ upgrade is hidden in the runner repair. Full remote browser checks remain pendin
 
 ## Handoff
 
+The [third CI run](https://github.com/Lomuss33/Geo/actions/runs/44490633975) reached
+production browser testing on Ubuntu 24.04 and passed 46/47 cases. The 1600px
+theme test hit its aggregate 30s limit while performing the atlas-opening click,
+after the light/dark contrast checks, reload and both viewer screenshots. The
+failure log reports a visible, enabled, stable button, not interception; its
+uploaded dark screenshot was inspected. No functional defect or performance
+budget success is inferred from that timing alone.
+
+The theme spec now separates light-theme persistence/reload from dark contrast
+and atlas inheritance, each in a fresh browser context at 1600/390/320px. All
+original contrast, rectangle, selected-country and mobile 44px assertions remain;
+the normal 30s test and 5s expectation limits are unchanged. Atlas dark-theme
+inheritance is now explicitly asserted before toggling light. Screenshots use
+per-test output paths. Local lint and all six focused production theme cases
+pass (28.9s total). The complete production suite now has 50 cases; full remote
+CI remains required before merge. Only test structure/documentation changed.
+
 Finish integration and record exact GitHub URLs and commit/check outcomes.
 Preserve source review blocks and the MapLibre hash guards. Do not mark earlier
 tasks done merely because their code is merged. Next implementation is GEO-205;

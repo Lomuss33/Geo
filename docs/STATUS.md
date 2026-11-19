@@ -28,7 +28,7 @@ GEO-208 integration is active. Fresh local `npm run check` passes on the staged
 application tree (256 unit / 8 Node, lint and Pages build). All 117 candidate
 files were screened for credential patterns and unexpectedly large files; no
 findings. Public boundary assets are unchanged, and quarantined history remains
-ignored/outside the public tree. PR/main CI is being added before push; Pages
+ignored/outside the public tree. PR/main CI is committed and running; Pages
 release is manual, pending the existing source/security gates. Pages read-back
 now confirms workflow publication instead of legacy branch-root publication;
 no deployment was dispatched. The first remote install failed before testing
@@ -39,7 +39,12 @@ pin Node 24.22.3, the documented security patch, instead of using the older runn
 cache. Local Node/PATH are unchanged. The next remote run passed clean install
 and the 256 unit / 8 Node checks, then failed because ubuntu-latest is now 26.04,
 unsupported by the pinned Playwright 1.58.2. CI and manual deployment now select
-supported Ubuntu 24.04 explicitly. Await corrected-head CI before merging;
+supported Ubuntu 24.04 explicitly. Its first browser run passed 46/47 cases;
+the combined desktop theme/reload/atlas case reached its total 30s test limit
+after both contrast screenshots. Theme persistence and atlas inheritance are now
+independent tests at the same three sizes, preserving assertions and 30s limits;
+all six pass locally, and the full production suite now contains 50 cases.
+Await corrected-head CI before merging;
 follow [GEO-208](tasks/in-progress/GEO-208-verified-integration.md) and PR #1.
 
 - GEO-190: owner constitution, reality audit, durable memory and executable backlog.
