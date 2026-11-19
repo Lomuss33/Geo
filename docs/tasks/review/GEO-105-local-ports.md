@@ -48,3 +48,9 @@ and documents the explicit `--port 6001` development override.
 - [ ] Changes inspected
 - [ ] Acceptance criteria confirmed
 - Notes: independent review pending.
+
+## Superseded development default
+
+GEO-193 replaces browser-blocked dev port 6000 with 6003. Preview remains 6001;
+the later E2E isolation uses 6002. Historical evidence above is retained, not a
+recommendation to bypass browser safety restrictions.

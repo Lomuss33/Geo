@@ -1,9 +1,13 @@
 name: Deploy Geo
 
 on:
-  push:
-    branches: ['main']
   workflow_dispatch:
+    inputs:
+      release_reviewed:
+        description: 'Confirm source rights, dependency security and release review are complete'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -16,6 +20,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main' && inputs.release_reviewed
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,6 +40,9 @@ jobs:
 
       - name: Unit tests
         run: npm run test
+
+      - name: Data contract and publication tests
+        run: npm run test:data
 
       - name: Install Playwright
         run: npx playwright install --with-deps chromium

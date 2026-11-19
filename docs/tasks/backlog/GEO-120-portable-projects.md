@@ -6,7 +6,7 @@
 - Owner: unclaimed
 - Branch: `geo/GEO-120-portable-projects` (create when claimed)
 - Parent: studio roadmap
-- Dependencies: GEO-100, GEO-110
+- Dependencies: GEO-100, GEO-110, GEO-197, GEO-199
 
 ## Objective
 
@@ -21,6 +21,10 @@ Read `docs/PRODUCT.md`, `docs/STUDIO_CONTRACTS.md`, and `AGENTS.md`.
 - [ ] Versioned scope/selection view links with URL-size budget and file fallback.
 
 ## Acceptance criteria
+
+- [ ] A camera project can embed/reference a validated time-atlas snapshot,
+      selected year, geographic scope, perspective and visible layer IDs without
+      dropping provenance or confusing atlas files with animation-only imports.
 
 - [ ] Project export/import preserves scene, selection, observations, annotations, output settings, and timeline.
 - [ ] Malformed or oversized imports leave the active draft unchanged.

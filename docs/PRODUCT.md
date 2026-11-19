@@ -1,16 +1,26 @@
 # Geo product direction
 
-Status: agreed direction, prepared for incremental implementation in GEO-090.
+Release journey, updated 2026-11-16. Enduring owner constraints are canonical in
+[PRODUCT_VISION](PRODUCT_VISION.md); actual capabilities are in
+[FEATURE_REGISTRY](FEATURE_REGISTRY.md) and current checks in [STATUS](STATUS.md).
 Features below are targets unless explicitly marked as existing.
 
 ## Purpose
 
-Explore, explain, and animate geography, from the Balkans to the world, entirely
-in the browser. Serve geography learners, educators, and short-clip creators through
-one workflow:
+Explore, explain, and animate Earth and human geography through time, from the
+Balkans to the world, entirely in the browser. The existing Earth screen remains
+the default starting view. Serve learners, educators, and short-clip creators
+through one workflow:
 
 **Choose a scope → explore a place and indicator → compare and explain → create a
 sequence → export or share.**
+
+The Time atlas adds a time lens with four perspectives: borders/states, people/rule,
+culture/society, and dated Earth imagery. Its interactive foundation is implemented.
+The approximate 1900/1938 first-party pilot is now suspended for component-rights
+review (GEO-191); user-supplied atlas files remain supported. Other curated
+historical datasets remain to be sourced. See [TIME_ATLAS.md](TIME_ATLAS.md)
+for behavior, data authoring, uncertainty and delivery slices.
 
 ## Three connected workflows
 
@@ -23,10 +33,10 @@ modes underneath them, not replacements for these workflows.
 
 ## Geographic scopes
 
-- **Balkans:** first complete experience with curated country comparisons and
+- **Balkans:** first dataset-depth pilot with curated country comparisons and
   explicit data coverage. Administrative detail appears only where available.
 - **Europe:** extend the same workflow to a documented European collection.
-- **World:** all supported country records, with explicit missing-data behavior.
+- **World:** global foundation and default catalog scope, with explicit missing-data behavior.
 
 Proposed Balkans launch collection: Albania, Bosnia and Herzegovina, Bulgaria,
 Croatia, Greece, Kosovo, Montenegro, North Macedonia, Romania, Serbia, Slovenia,
@@ -40,7 +50,7 @@ GEO-100 documents exact membership, source policy, and coverage behavior in
 [GEOGRAPHIC_SCOPES.md](GEOGRAPHIC_SCOPES.md). Membership comes from versioned
 configuration, never viewport bounds.
 
-## First complete journey
+## Initial modern-data journey
 
 1. Open Balkans and find Croatia, Serbia, and Bosnia and Herzegovina.
 2. Select population and inspect comparable observations with visible source years.
@@ -72,9 +82,21 @@ Timeline hex export is not video export. Country search and observation provenan
 are implemented; the metric build preserves source years. Headway needs remote
 tiles. Studio project files, guided lessons, and media exports remain planned.
 
+## Integrated target journey
+
+On a phone, open Earth without required onboarding; find Bosnia and Herzegovina;
+inspect a documented historical snapshot, source and uncertainty; add verified
+Relief/hydrology with explicit modern-reference labels; compare available epochs;
+carry the same focus into Create; edit scenes and a linked/overridden caption;
+export and re-import a portable project. This is a target, not a delivered workflow.
+The modern-data journey above remains a useful smaller acceptance path.
+
 ## First-release boundaries
 
-Defer accounts, cloud storage, collaboration, live feeds, full historical series,
-terrain, and server video rendering. GDP per capita and density follow trustworthy
+Exclude mandatory accounts, paid services and required backend. Defer cloud
+storage, collaboration, live feeds and server video rendering. True terrain follows
+verified zero-cost DEM sourcing and is not implemented yet. Historical exploration is now a primary direction, delivered through
+sourced regional datasets and documented time coverage; complete global historical
+coverage is not a first-release promise. GDP per capita and density follow trustworthy
 population/GDP observations with explicit source and calculation rules. Success is
 the complete journey, not the number of controls.

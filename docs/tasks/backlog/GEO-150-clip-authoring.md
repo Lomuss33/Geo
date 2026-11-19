@@ -22,6 +22,9 @@ Read `docs/PRODUCT.md`, `docs/STUDIO_CONTRACTS.md`, and `AGENTS.md`.
 
 ## Acceptance criteria
 
+- [ ] Future time-story keyframes carry both camera pose and atlas year/layer
+      state; preview never substitutes missing historical or imagery frames.
+
 - [ ] An author can select three locations and preview a 15-second captioned sequence.
 - [ ] Legacy command timelines retain deterministic saved-start-pose behavior.
 - [ ] Scrubbing and playback agree at keyframes and annotation boundaries.

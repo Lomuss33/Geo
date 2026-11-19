@@ -1,6 +1,9 @@
 # Proposed studio contracts
 
-Prepared in GEO-090. Project/export sections remain implementation requirements.
+Prepared in GEO-090; refined by the 2026-11-16 owner constitution. These are
+proposed contracts, not a released studio format. [PRODUCT_VISION](PRODUCT_VISION.md)
+and [DATA_POLICY](DATA_POLICY.md) constrain implementation. Project/export sections
+remain implementation requirements.
 GEO-110 implements observation validation and comparison policy as described in
 [OBSERVATIONS.md](OBSERVATIONS.md); other APIs remain planned.
 
@@ -40,16 +43,21 @@ separate from metric provenance.
 ## Project JSON v1
 
 Top-level discriminator: `format: "geo-studio-project"`; integer `schemaVersion: 1`.
-Carry title, creation/update timestamps, versioned scope reference, rendering mode
-and camera, country/indicator selection, dataset references, annotations, timeline,
-and output settings.
+Carry title, creation/update timestamps, versioned scope reference and ordered
+scenes. Each scene needs duration, renderer, geographic view intent and camera,
+cartographic style, enabled layers, historical time, selected entities,
+comparison state, annotations, camera timeline/transition and dataset dependencies.
+Source observation time and animation time remain separate from historical time.
+GEO-120 must finalize the schema and limits before publishing any studio v1 file;
+no existing released studio file is being silently reinterpreted here.
 
 Nest the existing version-2 animation representation initially. Project and
 animation schema versions are independent. Annotations have IDs, text, geographic
 or screen anchors, and timing. Output settings carry dimensions, aspect ratio,
 duration, and target frame rate.
 
-Embed the selected observation snapshot and provenance, not all world geometry or
+Preserve selected observation snapshots/provenance and versioned layer references,
+with explicit fallback for missing versions. Do not embed all world geometry or
 arbitrary remote assets. Bundled dataset references include versions. Report
 missing geometry as partial-project availability. Re-import preserves observation
 meaning even after bundled metrics change.
@@ -58,6 +66,20 @@ Reject future versions, invalid enums, non-finite numbers, invalid coordinates,
 duplicate IDs, and malformed timing before changing live state. GEO-120 defines
 and tests file-size, annotation-count, and timeline-count limits. Import text as
 text. Failed import leaves the active project intact.
+
+## Historical claims and annotations
+
+Preserve original record IDs, names, classes, temporal claims, precision and
+source/evidence/interpretation references. Astronomical year conversion from the
+existing atlas v1 format is explicit; source interval semantics are not assumed
+universal. Model entity identity separately from source records and geometry.
+Unknown/reconstructed/disputed coverage and modern-reference layers are visible.
+GEO-199 owns the detailed evidence contract before curated temporal integration.
+
+Geo labels, data labels and free labels are separate. A data-linked label has
+`linked` or `overridden` state: user edits survive source updates until relinked.
+Preview/export evaluate the same scene/annotation model. Large external datasets
+stay outside scene JSON; preserve user-authored content and provenance on import.
 
 ## View sharing
 

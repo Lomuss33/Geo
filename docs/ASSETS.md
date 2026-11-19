@@ -21,7 +21,8 @@
 
 Deferred reduction options, in priority order:
 
-1. Increase geometry simplification for ADM1 and ADM2 before tiling.
+1. Establish pinned inputs and topology-aware multi-scale generalization with
+   documented geometric error; do not increase vertex sampling.
 2. Reduce tile max zoom for ADM1 and ADM2 if the current visual thresholds still hold up.
 3. Split ADM2 into an optional secondary pack while keeping ADM0 and ADM1 in the core local bundle.
 4. Revisit country coverage tiering for territories or fallback ADM0 sources.
@@ -37,3 +38,11 @@ Deferred reduction options, in priority order:
 ## Licensing note
 
 NASA imagery is reusable under NASA media guidance but is not relicensed as MIT project code.
+
+## Historical research quarantine
+
+The former `public/assets/time-atlas/` pilot is preserved locally in ignored
+`.cache/research/historical-pilot/` pending component-rights review. It is not part
+of the runtime distribution. `npm run verify:data` prevents accidental restoration
+of the blocked public directory. See [the source catalog](../data/catalog/README.md)
+and [HISTORICAL_PILOT](HISTORICAL_PILOT.md). Existing private atlas files are retained.
