@@ -13,7 +13,7 @@ None claimed. Inspect the current main/status and claim one ready task when work
 
 ## Review
 
-- [GEO-208 Verified repository integration](review/GEO-208-verified-integration.md) - [PR #1](https://github.com/Lomuss33/Geo/pull/1) merged as `f6ad045`; exact-head Linux CI passed 256 unit / 8 Node / 50 production Chromium / 20 dev Chromium / 3 canaries. Optional Macroscope was skipped; independent review is not claimed. Pages publication remains manual.
+- [GEO-208 Verified repository integration](review/GEO-208-verified-integration.md) - [PR #1](https://github.com/Lomuss33/Geo/pull/1) merged as `f6ad045`; exact-head Linux CI passed 256 unit / 8 Node / 50 production Chromium / 20 dev Chromium / 3 canaries. Optional Macroscope was skipped; independent review is not claimed. Pages publication remains manual. PC retirement Git preservation verified on 2026-11-20; recovery instructions are in STATUS.
 
 - [GEO-194 Renderer and geographic regression matrix](review/GEO-194-regression-matrix.md) - 256 unit / 8 Node / 47 Pages Chromium / 40 dev Chromium+Firefox / 20 Pages Firefox / 3 dev canaries / 1 Firefox DOM case passed. Renderer recovery, explicit Geo frames and editor readiness repaired; fine geometry, physical Android and performance remain separate gates.
 

@@ -158,3 +158,14 @@ claim of a new runtime test result. Runtime/test/workflow/data trees stay identi
 to the merged, CI-verified tree. Next implementation is GEO-205; GEO-207 remains
 before release. The bounded commit/merge request is fulfilled; future unrelated
 commits/pushes/publication still require their own authorization.
+
+## PC retirement preservation (2026-11-20)
+
+Owner explicitly requested pushing the project before erasing this PC. Fetched
+origin, ran `git push origin main`, and read back the remote main ref: it matched
+local `dfe8a368a9ed7ee78f9f62c273cc3c0e8841d858`. Clean working tree, empty stash
+list, and `git log --branches --not --remotes` confirmed no missing local branch
+commits. STATUS now records replacement-machine recovery and exclusions for
+ignored research archives and browser storage. This documentation-only follow-up
+is authorized for commit/push; no runtime changes, new runtime checks, independent
+review, or deployment are claimed. Next implementation remains GEO-205.

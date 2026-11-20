@@ -1,6 +1,6 @@
 # Geo — current handoff
 
-Updated: 2026-11-19. Maintainer: active task owner. Source of implementation truth:
+Updated: 2026-11-20. Maintainer: active task owner. Source of implementation truth:
 working code and checks, not the roadmap. See [owner vision](PRODUCT_VISION.md),
 [inventory](FEATURE_REGISTRY.md) and [audit](audits/GEO-190-reality-check.md).
 
@@ -172,3 +172,22 @@ and `git diff --check` passes. All 83 inherited files outside the task scope rem
 byte-identical; no public boundary assets changed. Full-tree formatting still
 fails on 65 legacy files, seven fewer than the 72-file entry baseline, with no
 new warning files. Do not reformat unrelated code to hide that debt.
+
+## PC retirement backup verification (2026-11-20)
+
+Owner requested Git preservation before erasing this PC. Fetched origin and
+pushed main; GitHub reported everything up to date at
+`dfe8a368a9ed7ee78f9f62c273cc3c0e8841d858`. Remote read-back matched local HEAD.
+The working tree was clean, no stashes existed, and no local branch commits
+were absent from the fetched remote refs. This GEO-208 handoff note is a
+subsequent documentation-only commit under the same explicit push request.
+
+Clone `https://github.com/Lomuss33/Geo.git` on the replacement machine, use
+Node 24 and `npm ci`, then follow CONTRIBUTING and this status. Next executable
+task remains GEO-205; no new runtime checks or release approval are claimed.
+
+Git does not preserve ignored `.cache/` archives, quarantined research,
+dependencies/build outputs, or browser local storage. Export wanted atlas and
+animation projects from the browser before wiping the PC and copy any wanted
+private research backups to separate storage. Quarantined archives must not be
+added to the public repository. No deployment was requested or dispatched.
